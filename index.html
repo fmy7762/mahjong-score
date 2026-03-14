@@ -353,6 +353,9 @@
             showLoader();
             try {
                 await saveToJsonBin(appData);
+                // 保存後に最新データを再取得して画面に反映
+                appData = await loadFromJsonBin();
+                if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
             } catch(e) {
                 alert('保存に失敗しました: ' + e.message);
                 hideLoader();
