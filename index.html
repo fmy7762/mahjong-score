@@ -9,11 +9,9 @@
     
     <link rel="apple-touch-icon" href="https://1.bp.blogspot.com/-uKbdWwBqF7g/UvSIw28d2NI/AAAAAAAAdg0/D_iN2JMv98o/s800/mahjong_chun.png">
 
-    <base target="_top">
     <title>3人麻雀リーグManager</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* --- 白ベースのデザイン --- */
         :root { 
             --primary: #1976d2;
             --accent: #ff9800;
@@ -36,7 +34,6 @@
         .container { max-width: 100%; padding: 15px; padding-top: 65px; box-sizing: border-box; }
         #viewHome.container { padding-top: 15px; }
 
-        /* 固定ナビ */
         .fixed-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px;
             background: rgba(240, 242, 245, 0.95); backdrop-filter: blur(5px);
@@ -142,7 +139,6 @@
             <button class="btn btn-info" onclick="navToAnalysis()">
                 📊 通算分析<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">全期間の合算・グラフ</span>
             </button>
-            
             <button class="btn btn-outline" style="background:#fff; border-color:#e65100; color:#e65100;" onclick="navToChips()">
                 💰 チップ貯金<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">現在の貯金額・増減入力</span>
             </button>
@@ -255,7 +251,7 @@
         <div class="card">
             <h3>📜 履歴</h3>
             <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailGames"></tbody></table>
-            </div>
+        </div>
     </div>
 
     <div id="viewAnalysis" class="container hidden">
@@ -277,6 +273,38 @@
     </div>
 
     <script>
+        // ============================================
+        // JSONBin 設定
+        // ============================================
+        const JSONBIN_API_KEY = '$2a$10$WDGQTE/btFlRftllospkteq7ZV7vhhVc00FWwTSY0SnuHjPUPHKsK';
+        const JSONBIN_BIN_ID  = '69b52146c3097a1dd523fb01';
+        const JSONBIN_URL     = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+        async function loadFromJsonBin() {
+            const res = await fetch(JSONBIN_URL + '/latest', {
+                headers: { 'X-Master-Key': JSONBIN_API_KEY }
+            });
+            if (!res.ok) throw new Error('読み込み失敗: ' + res.status);
+            const json = await res.json();
+            return json.record;
+        }
+
+        async function saveToJsonBin(data) {
+            const res = await fetch(JSONBIN_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': JSONBIN_API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) throw new Error('保存失敗: ' + res.status);
+            return await res.json();
+        }
+
+        // ============================================
+        // アプリ本体
+        // ============================================
         const PLAYERS = ["松下", "野田", "青木"];
         const COLORS = ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'];
         const COLORS_ALPHA = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)'];
@@ -288,142 +316,104 @@
         let editingGameId = null; 
         let charts = { current: null, archive: null, radar: [null, null, null] };
 
+        function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+        function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+
+        window.onload = async function() {
+            try {
+                appData = await loadFromJsonBin();
+                if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
+            } catch(e) {
+                console.error(e);
+                alert('データの読み込みに失敗しました。通信状況を確認してください。');
+            }
+            hideLoader();
+            updateVirtualCostDisplay();
+            updateHomeCurrentSeason();
+            document.getElementById('viewHome').classList.remove('hidden');
+        };
+
+        async function refreshData() {
+            showLoader();
+            try {
+                appData = await loadFromJsonBin();
+                if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
+            } catch(e) {
+                alert('更新に失敗しました');
+            }
+            hideLoader();
+            updateVirtualCostDisplay();
+            updateHomeCurrentSeason();
+            if (!document.getElementById('viewSeason').classList.contains('hidden')) renderSeasonView();
+            if (!document.getElementById('viewChips').classList.contains('hidden')) renderChipsView();
+        }
+
+        async function saveData(callback) {
+            showLoader();
+            try {
+                await saveToJsonBin(appData);
+            } catch(e) {
+                alert('保存に失敗しました: ' + e.message);
+                hideLoader();
+                return;
+            }
+            hideLoader();
+            if (callback) callback();
+        }
+
         function updateVirtualCostDisplay() {
             let totalGames = 0;
-            if (appData.current && appData.current.games) {
-                totalGames += appData.current.games.length;
-            }
-            if (appData.archives && appData.archives.length > 0) {
-                appData.archives.forEach(season => {
-                    if (season.games) {
-                        totalGames += season.games.length;
-                    }
-                });
-            }
-            const cost = totalGames * 1200;
+            if (appData.current && appData.current.games) totalGames += appData.current.games.length;
+            if (appData.archives) appData.archives.forEach(s => { if (s.games) totalGames += s.games.length; });
             document.getElementById('homeTotalGames').innerText = totalGames.toLocaleString();
-            document.getElementById('homeVirtualCost').innerText = cost.toLocaleString();
+            document.getElementById('homeVirtualCost').innerText = (totalGames * 1200).toLocaleString();
         }
 
         function updateHomeCurrentSeason() {
             const card = document.getElementById('homeCurrentSeasonCard');
-            if (!appData.current || !appData.current.active) {
-                card.classList.add('hidden'); 
-                return;
-            }
+            if (!appData.current || !appData.current.active) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
-
             const c = appData.current.config || {};
             const total = c.totalGames || 0;
             const currentCount = appData.current.games ? appData.current.games.length : 0;
-            const remain = total - currentCount;
-
             document.getElementById('homeSeasonName').innerText = appData.current.name || "名称未設定";
-            document.getElementById('homeRemainGames').innerText = `残り ${remain >= 0 ? remain : 0} 戦`;
-
+            document.getElementById('homeRemainGames').innerText = `残り ${Math.max(0, total - currentCount)} 戦`;
             const stats = calculateStats(appData.current.games || []);
             const tbody = document.getElementById('homeSeasonStatsBody');
             tbody.innerHTML = '';
-            
             stats.forEach((s, idx) => {
                 const tr = document.createElement('tr');
                 const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
-                
                 let diffStr = '-';
-                if (idx > 0) {
-                    const diff = (stats[idx-1].total - s.total).toFixed(1);
-                    diffStr = `<span style="color:#666;">▼${diff}</span>`; 
-                }
-
+                if (idx > 0) diffStr = `<span style="color:#666;">▼${(stats[idx-1].total - s.total).toFixed(1)}</span>`;
                 tr.innerHTML = `<td>${idx + 1}</td><td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total > 0 ? '+' + s.total : s.total}</td><td style="font-size:0.85rem;">${diffStr}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        window.onload = function() {
-            google.script.run.withSuccessHandler(onDataLoaded).loadFromSheet();
-        };
-
-        function onDataLoaded(json) {
-            document.getElementById('loader').classList.add('hidden');
-            if (json && json !== "") {
-                try {
-                    const parsed = JSON.parse(json);
-                    if (!parsed.current) { appData.current = parsed; appData.archives = []; }
-                    else { appData = parsed; }
-                } catch(e) { console.error("Parse Error", e); }
-            }
-            
-            if (!appData.chips) {
-                appData.chips = { totals: [0, 0, 0], history: [] };
-            }
-
-            updateVirtualCostDisplay();
-            updateHomeCurrentSeason(); 
-
-            if(document.querySelectorAll('.container:not(.hidden)').length === 0) {
-                document.getElementById('viewHome').classList.remove('hidden');
-            }
-        }
-
-        function refreshData() {
-            document.getElementById('loader').classList.remove('hidden');
-            google.script.run.withSuccessHandler((json) => {
-                onDataLoaded(json);
-                if(!document.getElementById('viewSeason').classList.contains('hidden')) renderSeasonView();
-                if(!document.getElementById('viewChips').classList.contains('hidden')) renderChipsView();
-            }).loadFromSheet();
-        }
-
-        function saveData(callback) {
-            document.getElementById('loader').classList.remove('hidden');
-            const json = JSON.stringify(appData);
-            google.script.run.withSuccessHandler(() => {
-                document.getElementById('loader').classList.add('hidden');
-                if (callback) callback();
-            }).saveToSheet(json);
-        }
-
         function hideAllViews() {
             ['viewHome', 'viewSeason', 'viewArchive', 'viewArchiveDetail', 'viewAnalysis', 'viewChips'].forEach(id => document.getElementById(id).classList.add('hidden'));
         }
-        
-        function navToHome() { 
-            hideAllViews(); 
-            updateVirtualCostDisplay();
-            updateHomeCurrentSeason();
-            document.getElementById('viewHome').classList.remove('hidden'); 
-        }
-        
+        function navToHome() { hideAllViews(); updateVirtualCostDisplay(); updateHomeCurrentSeason(); document.getElementById('viewHome').classList.remove('hidden'); }
         function navToSeason() { hideAllViews(); document.getElementById('viewSeason').classList.remove('hidden'); renderSeasonView(); }
         function navToArchive() { hideAllViews(); document.getElementById('viewArchive').classList.remove('hidden'); renderArchiveView(); }
         function navToAnalysis() { hideAllViews(); document.getElementById('viewAnalysis').classList.remove('hidden'); renderAnalysisView(); }
         function navToArchiveDetail(idx) { hideAllViews(); document.getElementById('viewArchiveDetail').classList.remove('hidden'); renderArchiveDetail(idx); }
-
-        function navToChips() {
-            hideAllViews();
-            document.getElementById('viewChips').classList.remove('hidden');
-            renderChipsView();
-        }
+        function navToChips() { hideAllViews(); document.getElementById('viewChips').classList.remove('hidden'); renderChipsView(); }
 
         function renderChipsView() {
             if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
-            
             const tBody = document.getElementById('chipsTotalBody');
             tBody.innerHTML = '';
             PLAYERS.forEach((p, i) => {
                 const count = appData.chips.totals[i] || 0;
-                const yen = count * 200; 
+                const yen = count * 200;
                 const tr = document.createElement('tr');
                 const colorClass = count >= 0 ? 'val-plus' : 'val-minus';
-                tr.innerHTML = `<td style="font-weight:bold">${p}</td>
-                                <td class="${colorClass}">${count > 0 ? '+'+count : count} 枚</td>
-                                <td class="${colorClass}" style="font-size:1.1rem;">¥${yen.toLocaleString()}</td>`;
+                tr.innerHTML = `<td style="font-weight:bold">${p}</td><td class="${colorClass}">${count > 0 ? '+'+count : count} 枚</td><td class="${colorClass}" style="font-size:1.1rem;">¥${yen.toLocaleString()}</td>`;
                 tBody.appendChild(tr);
             });
-
             for(let i=0; i<3; i++) document.getElementById(`chip_in_${i}`).value = '';
-
             const hBody = document.getElementById('chipsHistoryBody');
             hBody.innerHTML = '';
             if (appData.chips.history) {
@@ -431,10 +421,7 @@
                     const orgIndex = appData.chips.history.length - 1 - reverseIdx;
                     const tr = document.createElement('tr');
                     let cells = `<td style="font-size:0.8rem; color:#666;">${h.date}</td>`;
-                    h.diffs.forEach(d => {
-                        const colorClass = d >= 0 ? 'val-plus' : 'val-minus';
-                        cells += `<td class="${colorClass}">${d > 0 ? '+'+d : (d === 0 ? '-' : d)}</td>`;
-                    });
+                    h.diffs.forEach(d => { const colorClass = d >= 0 ? 'val-plus' : 'val-minus'; cells += `<td class="${colorClass}">${d > 0 ? '+'+d : (d === 0 ? '-' : d)}</td>`; });
                     cells += `<td><button class="btn btn-outline btn-sm" style="padding:4px 8px; margin:0;" onclick="deleteChipHistory(${orgIndex})">取消</button></td>`;
                     tr.innerHTML = cells;
                     hBody.appendChild(tr);
@@ -444,43 +431,23 @@
 
         function submitChips() {
             if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
-            
-            let diffs = [];
-            let hasInput = false;
+            let diffs = []; let hasInput = false;
             for(let i=0; i<3; i++) {
                 let val = document.getElementById(`chip_in_${i}`).value;
-                if (val === '') {
-                    diffs.push(0); 
-                } else {
-                    diffs.push(parseInt(val));
-                    hasInput = true;
-                }
+                if (val === '') { diffs.push(0); } else { diffs.push(parseInt(val)); hasInput = true; }
             }
-            
-            if (!hasInput) {
-                alert("枚数を入力してください");
-                return;
-            }
-
-            for(let i=0; i<3; i++) {
-                appData.chips.totals[i] += diffs[i];
-            }
-            
+            if (!hasInput) { alert("枚数を入力してください"); return; }
+            for(let i=0; i<3; i++) appData.chips.totals[i] += diffs[i];
             const now = new Date();
             const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
             appData.chips.history.push({ date: dateStr, diffs: diffs });
-            
             saveData(renderChipsView);
         }
 
         function deleteChipHistory(idx) {
             if(!confirm("このチップ増減履歴を取り消しますか？\n（現在の貯金額から入力分が差し引かれます）")) return;
             const h = appData.chips.history[idx];
-            
-            for(let i=0; i<3; i++) {
-                appData.chips.totals[i] -= h.diffs[i];
-            }
-            
+            for(let i=0; i<3; i++) appData.chips.totals[i] -= h.diffs[i];
             appData.chips.history.splice(idx, 1);
             saveData(renderChipsView);
         }
@@ -490,12 +457,7 @@
             const totalGames = parseInt(document.getElementById('setupGames').value);
             const originPt = parseInt(document.getElementById('setupOrigin').value);
             const uma = [parseInt(document.getElementById('uma1').value), parseInt(document.getElementById('uma2').value), parseInt(document.getElementById('uma3').value)];
-            const rules = {
-                red: document.getElementById('ruleRed').value,
-                flower: document.getElementById('ruleFlower').value,
-                north: document.getElementById('ruleNorth').value,
-                other: document.getElementById('ruleOther').value
-            };
+            const rules = { red: document.getElementById('ruleRed').value, flower: document.getElementById('ruleFlower').value, north: document.getElementById('ruleNorth').value, other: document.getElementById('ruleOther').value };
             appData.current = { active: true, name, config: { totalGames, startPt: originPt, returnPt: originPt, uma, rules }, games: [] };
             saveData(renderSeasonView);
         }
@@ -503,11 +465,7 @@
         function finishSeason() {
             if(!confirm("シーズンを終了してアーカイブに保存しますか？")) return;
             const stats = calculateStats(appData.current.games);
-            const archiveData = {
-                name: appData.current.name, date: new Date().toLocaleDateString(),
-                gamesCount: appData.current.games.length, config: appData.current.config,
-                stats: stats, games: appData.current.games
-            };
+            const archiveData = { name: appData.current.name, date: new Date().toLocaleDateString(), gamesCount: appData.current.games.length, config: appData.current.config, stats: stats, games: appData.current.games };
             if (!appData.archives) appData.archives = [];
             appData.archives.unshift(archiveData);
             appData.current = { active: false, config: {}, games: [] };
@@ -524,6 +482,7 @@
             }
             return { scores, busts, total };
         }
+
         function clearInputs() {
             for(let i=0; i<3; i++) { document.getElementById(`score_${i}`).value = ""; document.getElementById(`bust_${i}`).value = "0"; }
             editingGameId = null;
@@ -533,18 +492,16 @@
             document.getElementById('inputHeader').innerText = `🀄 結果入力 (第${appData.current.games.length + 1}戦)`;
             document.getElementById('errorMsg').style.display = 'none';
         }
+
         function submitGame() {
             const inp = getInputs(); if(!inp) { alert("入力してください"); return; }
             const expected = appData.current.config.startPt * 3;
-            if(inp.total !== expected) {
-                document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('errorMsg').innerText = `合計不一致: ${inp.total} (規定:${expected})`;
-                return;
-            }
+            if(inp.total !== expected) { document.getElementById('errorMsg').style.display = 'block'; document.getElementById('errorMsg').innerText = `合計不一致: ${inp.total} (規定:${expected})`; return; }
             const pts = calculatePoints(inp.scores, inp.busts);
             appData.current.games.push({ id: Date.now().toString(), displayId: appData.current.games.length + 1, rawScores: inp.scores, busts: inp.busts, finalPts: pts });
             saveData(() => { clearInputs(); renderSeasonView(); });
         }
+
         function editGame(idx) {
             const game = appData.current.games[idx];
             editingGameId = idx;
@@ -555,6 +512,7 @@
             document.getElementById('btnGroupSubmit').classList.add('hidden');
             document.getElementById('btnGroupEdit').classList.remove('hidden');
         }
+
         function updateGame() {
             if (editingGameId === null) return;
             const inp = getInputs(); if(!inp) return;
@@ -565,6 +523,7 @@
             target.rawScores = inp.scores; target.busts = inp.busts; target.finalPts = pts;
             saveData(() => { clearInputs(); renderSeasonView(); });
         }
+
         function cancelEdit() { clearInputs(); }
 
         function calculatePoints(rawScores, bustCounts) {
@@ -587,11 +546,7 @@
             let stats = PLAYERS.map(name => ({ name: name, total: 0, ranks: [0,0,0], gameCount: 0 }));
             games.forEach(g => {
                 const pIds = [0,1,2].sort((a,b) => g.rawScores[b] - g.rawScores[a]);
-                g.finalPts.forEach((pt, idx) => {
-                    stats[idx].total += pt;
-                    stats[idx].gameCount++;
-                    stats[idx].ranks[pIds.indexOf(idx)]++;
-                });
+                g.finalPts.forEach((pt, idx) => { stats[idx].total += pt; stats[idx].gameCount++; stats[idx].ranks[pIds.indexOf(idx)]++; });
             });
             return stats.map(s => {
                 s.total = parseFloat(s.total.toFixed(1));
@@ -603,178 +558,101 @@
         }
 
         function getHighLow(games) {
-            let best = { score: -9999, name: '-' };
-            let worst = { score: 9999, name: '-' };
-            games.forEach(g => {
-                g.finalPts.forEach((pt, idx) => {
-                    if(pt > best.score) { best.score = pt; best.name = PLAYERS[idx]; }
-                    if(pt < worst.score) { worst.score = pt; worst.name = PLAYERS[idx]; }
-                });
-            });
+            let best = { score: -9999, name: '-' }; let worst = { score: 9999, name: '-' };
+            games.forEach(g => { g.finalPts.forEach((pt, idx) => { if(pt > best.score) { best.score = pt; best.name = PLAYERS[idx]; } if(pt < worst.score) { worst.score = pt; worst.name = PLAYERS[idx]; } }); });
             if (games.length === 0) return null;
             return { best, worst };
         }
 
         function renderSeasonView() {
-            const setup = document.getElementById('setupArea');
-            const active = document.getElementById('activeSeasonArea');
+            const setup = document.getElementById('setupArea'); const active = document.getElementById('activeSeasonArea');
             if (!appData.current.active) { setup.classList.remove('hidden'); active.classList.add('hidden'); return; }
             setup.classList.add('hidden'); active.classList.remove('hidden');
-            
             document.getElementById('seasonTitle').innerText = appData.current.name;
             document.getElementById('nextGameNum').innerText = `(第${appData.current.games.length + 1}戦)`;
-
             const ruleList = document.getElementById('currentRuleList'); ruleList.innerHTML = '';
             const c = appData.current.config || {}; const r = c.rules || {};
-            
-            const total = c.totalGames || 0;
-            const current = appData.current.games.length;
-            const remain = total - current;
-            const progressText = `${total}戦 (残り${remain >= 0 ? remain : 0}戦)`;
-
+            const remain = (c.totalGames || 0) - appData.current.games.length;
             const items = [
-                { label: '総試合数', val: progressText },
-                { label: '原点', val: c.startPt || '-' }, 
-                { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
+                { label: '総試合数', val: `${c.totalGames || 0}戦 (残り${Math.max(0, remain)}戦)` },
+                { label: '原点', val: c.startPt || '-' }, { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
                 { label: '赤ドラ', val: r.red || '-' }, { label: '花牌', val: r.flower || '-' },
                 { label: '北抜き', val: r.north || '-' }, { label: 'その他', val: r.other || 'なし' }
             ];
-            items.forEach(item => {
-                const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li);
-            });
-
+            items.forEach(item => { const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li); });
             const stats = calculateStats(appData.current.games);
             renderStatsTableWithDiff('leaderboardBody', stats);
             renderHighLow('hilowArea', appData.current.games);
             updateLineChart(appData.current.games, 'scoreChart', 'current');
-
-            const histBody = document.getElementById('historyBody');
-            histBody.innerHTML = '';
-            
-            // ▼▼ 変更: 現在のシーズンの履歴を着順で表示 ▼▼
+            const histBody = document.getElementById('historyBody'); histBody.innerHTML = '';
             appData.current.games.map((g, i) => ({...g, orgIndex: i})).reverse().forEach(g => {
-                const tr = document.createElement('tr');
-                let cells = `<td>${g.displayId}</td>`;
-                
-                // ポイント(finalPts)が高い順に並び替えるためのインデックス配列を作成
+                const tr = document.createElement('tr'); let cells = `<td>${g.displayId}</td>`;
                 const sortedIndices = [0, 1, 2].sort((a, b) => g.finalPts[b] - g.finalPts[a]);
-                
                 sortedIndices.forEach(pIdx => {
-                    const pt = g.finalPts[pIdx];
-                    const raw = g.rawScores[pIdx];
+                    const pt = g.finalPts[pIdx]; const raw = g.rawScores[pIdx];
                     const ptClass = pt >= 0 ? 'val-plus' : 'val-minus';
-                    const name = PLAYERS[pIdx];
-                    // 名前も小さく表示する
-                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${name}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${raw})</div></td>`;
+                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${PLAYERS[pIdx]}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${raw})</div></td>`;
                 });
-                
                 cells += `<td><button class="btn btn-outline btn-sm" onclick="editGame(${g.orgIndex})">修正</button></td>`;
-                tr.innerHTML = cells;
-                histBody.appendChild(tr);
+                tr.innerHTML = cells; histBody.appendChild(tr);
             });
-            // ▲▲ 変更ここまで ▲▲
         }
 
         function renderStatsTableWithDiff(elementId, stats) {
             const tbody = document.getElementById(elementId); tbody.innerHTML = '';
             stats.forEach((s, idx) => {
-                const tr = document.createElement('tr');
-                const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
-                
+                const tr = document.createElement('tr'); const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
                 let diffStr = '-';
-                if (idx > 0) {
-                    const diff = (stats[idx-1].total - s.total).toFixed(1);
-                    diffStr = `<span style="color:#666;">▼${diff}</span>`;
-                }
-
-                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td>
-                                <td style="font-size:0.85rem;">${diffStr}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
+                if (idx > 0) diffStr = `<span style="color:#666;">▼${(stats[idx-1].total - s.total).toFixed(1)}</span>`;
+                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td><td style="font-size:0.85rem;">${diffStr}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
         function renderArchiveView() {
-            const container = document.getElementById('archiveContainer');
-            container.innerHTML = '';
-            if (!appData.archives || appData.archives.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#666;">データがありません</p>';
-                return;
-            }
+            const container = document.getElementById('archiveContainer'); container.innerHTML = '';
+            if (!appData.archives || appData.archives.length === 0) { container.innerHTML = '<p style="text-align:center; color:#666;">データがありません</p>'; return; }
             appData.archives.forEach((season, idx) => {
-                const card = document.createElement('div');
-                card.className = 'card';
+                const card = document.createElement('div'); card.className = 'card';
                 const winner = season.stats[0];
                 const displayStats = calculateStats(season.games);
-
                 let html = `<h3 style="margin:0 0 10px 0; border-bottom:1px solid #eee; padding-bottom:5px;">${season.name} <span style="font-size:0.8rem; font-weight:normal; float:right">${season.date}終了</span></h3>
                     <div style="margin-bottom:10px; font-weight:bold; color:var(--primary);">🏆 優勝: ${winner.name} (${winner.total > 0 ? '+' : ''}${winner.total})</div>
                     <table><thead><tr style="background:#eee;"><th>順</th><th>名前</th><th>Total</th><th>連対率</th></tr></thead><tbody>`;
-                
-                displayStats.forEach((s, r) => {
-                    const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
-                    html += `<tr><td>${r + 1}</td><td>${s.name}</td><td class="${ptClass}">${s.total>0?'+'+s.total:s.total}</td><td>${s.rentai}</td></tr>`;
-                });
-                
-                html += `</tbody></table>
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <button class="btn btn-outline btn-sm" style="flex:2;" onclick="navToArchiveDetail(${idx})">📜 詳細を見る</button>
-                        <button class="btn btn-danger btn-sm" style="flex:1; background:#999;" onclick="deleteArchive(${idx})">🗑 削除</button>
-                    </div>`;
-                card.innerHTML = html;
-                container.appendChild(card);
+                displayStats.forEach((s, r) => { const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus'; html += `<tr><td>${r + 1}</td><td>${s.name}</td><td class="${ptClass}">${s.total>0?'+'+s.total:s.total}</td><td>${s.rentai}</td></tr>`; });
+                html += `</tbody></table><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn btn-outline btn-sm" style="flex:2;" onclick="navToArchiveDetail(${idx})">📜 詳細を見る</button><button class="btn btn-danger btn-sm" style="flex:1; background:#999;" onclick="deleteArchive(${idx})">🗑 削除</button></div>`;
+                card.innerHTML = html; container.appendChild(card);
             });
         }
 
         function renderArchiveDetail(idx) {
             const season = appData.archives[idx];
             document.getElementById('archiveDetailTitle').innerText = `${season.name} 詳細`;
-            
             const ruleList = document.getElementById('archiveRuleList'); ruleList.innerHTML = '';
             const c = season.config || {}; const r = c.rules || {};
-            const items = [
-                { label: '原点', val: c.startPt || '-' }, { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
-                { label: '赤ドラ', val: r.red || '-' }, { label: '花牌', val: r.flower || '-' },
-                { label: '北抜き', val: r.north || '-' }, { label: 'その他', val: r.other || 'なし' }
-            ];
-            items.forEach(item => {
-                const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li);
-            });
-
-            const displayStats = calculateStats(season.games);
-            renderStatsTable('archiveDetailStats', displayStats);
+            [{ label: '原点', val: c.startPt || '-' }, { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
+             { label: '赤ドラ', val: r.red || '-' }, { label: '花牌', val: r.flower || '-' },
+             { label: '北抜き', val: r.north || '-' }, { label: 'その他', val: r.other || 'なし' }
+            ].forEach(item => { const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li); });
+            renderStatsTable('archiveDetailStats', calculateStats(season.games));
             renderHighLow('archiveHilowArea', season.games);
             updateLineChart(season.games, 'archiveScoreChart', 'archive');
-
             const gamesBody = document.getElementById('archiveDetailGames'); gamesBody.innerHTML = '';
-            
-            // ▼▼ 変更: アーカイブの履歴を着順で表示 ▼▼
             [...season.games].reverse().forEach(g => {
-                const tr = document.createElement('tr');
-                let cells = `<td>${g.displayId}</td>`;
-                
-                const sortedIndices = [0, 1, 2].sort((a, b) => g.finalPts[b] - g.finalPts[a]);
-                
-                sortedIndices.forEach(pIdx => {
-                    const pt = g.finalPts[pIdx];
-                    const raw = g.rawScores[pIdx];
-                    const ptClass = pt >= 0 ? 'val-plus' : 'val-minus';
-                    const name = PLAYERS[pIdx];
-                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${name}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${raw})</div></td>`;
+                const tr = document.createElement('tr'); let cells = `<td>${g.displayId}</td>`;
+                [0, 1, 2].sort((a, b) => g.finalPts[b] - g.finalPts[a]).forEach(pIdx => {
+                    const pt = g.finalPts[pIdx]; const ptClass = pt >= 0 ? 'val-plus' : 'val-minus';
+                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${PLAYERS[pIdx]}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${g.rawScores[pIdx]})</div></td>`;
                 });
-                
-                tr.innerHTML = cells;
-                gamesBody.appendChild(tr);
+                tr.innerHTML = cells; gamesBody.appendChild(tr);
             });
-            // ▲▲ 変更ここまで ▲▲
         }
 
         function renderStatsTable(elementId, stats) {
             const tbody = document.getElementById(elementId); tbody.innerHTML = '';
             stats.forEach(s => {
-                const tr = document.createElement('tr');
-                const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
-                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td>
-                                <td>${s.rentai}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
+                const tr = document.createElement('tr'); const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
+                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td><td>${s.rentai}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -782,34 +660,21 @@
         function renderAnalysisView() {
             let stats = PLAYERS.map(name => ({ name: name, totalPt: 0, ranks: [0,0,0], gameCount: 0, maxPt: -9999, topCount: 0 }));
             let totalGames = 0;
-
             let seasons = [];
             if(appData.current && appData.current.active) seasons.push(appData.current);
             if(appData.archives) seasons = seasons.concat(appData.archives);
-
             seasons.forEach(season => {
                 const startPt = (season.config && season.config.startPt) ? season.config.startPt : 35000;
-                let weight = 1.0;
-                if (startPt === 50000) {
-                    weight = 0.7; 
-                }
-
+                const weight = startPt === 50000 ? 0.7 : 1.0;
                 if(season.games) {
                     totalGames += season.games.length;
                     season.games.forEach(g => {
                         const pIds = [0,1,2].sort((a,b) => g.rawScores[b] - g.rawScores[a]);
-                        g.finalPts.forEach((pt, idx) => {
-                            stats[idx].totalPt += (pt * weight);
-                            stats[idx].gameCount++;
-                            stats[idx].ranks[pIds.indexOf(idx)]++;
-                            if(pt > stats[idx].maxPt) stats[idx].maxPt = pt;
-                        });
+                        g.finalPts.forEach((pt, idx) => { stats[idx].totalPt += (pt * weight); stats[idx].gameCount++; stats[idx].ranks[pIds.indexOf(idx)]++; if(pt > stats[idx].maxPt) stats[idx].maxPt = pt; });
                     });
                 }
             });
-
             document.getElementById('totalGamesCount').innerText = totalGames;
-
             const tbody = document.getElementById('analysisTableBody'); tbody.innerHTML = '';
             stats.forEach(s => {
                 if(s.gameCount === 0) return;
@@ -818,19 +683,16 @@
                 s.rentaiRate = ((s.ranks[0] + s.ranks[1]) / s.gameCount * 100).toFixed(1);
                 s.lastRate = (s.ranks[2] / s.gameCount * 100).toFixed(1);
                 s.avgRank = ((s.ranks[0]*1 + s.ranks[1]*2 + s.ranks[2]*3) / s.gameCount).toFixed(2);
-                s.lastAvoid = (100 - s.lastRate).toFixed(1);
-
-                const tr = document.createElement('tr');
-                const ptClass = s.totalPt >= 0 ? 'val-plus' : 'val-minus';
+                s.lastAvoid = (100 - parseFloat(s.lastRate)).toFixed(1);
+                const tr = document.createElement('tr'); const ptClass = s.totalPt >= 0 ? 'val-plus' : 'val-minus';
                 tr.innerHTML = `<td style="color:var(--primary); font-weight:bold;">${s.name}</td><td class="${ptClass}">${s.totalPt.toFixed(1)}</td><td>${s.avgPt}</td><td>${s.topRate}%</td><td>${s.rentaiRate}%</td><td>${s.lastAvoid}%</td>`;
                 tbody.appendChild(tr);
             });
-
             const datasets = stats.map((s, i) => {
                 let v1 = Math.min(100, Math.max(0, (parseFloat(s.avgPt) + 20) * 2.5));
                 let v2 = (parseFloat(s.lastAvoid) - 40) * 2;
                 let v3 = (parseFloat(s.topRate) - 10) * 2;
-                let v4 = Math.min(100, Math.max(0, (s.maxPt - 30))); 
+                let v4 = Math.min(100, Math.max(0, (s.maxPt - 30)));
                 let v5 = (2.5 - parseFloat(s.avgRank)) * 100;
                 return { label: s.name, data: [v1, v2, v3, v4, v5], backgroundColor: COLORS_ALPHA[i], borderColor: COLORS[i], borderWidth: 2 };
             });
@@ -838,12 +700,9 @@
         }
 
         function renderHighLow(elementId, games) {
-            const hl = getHighLow(games);
-            const div = document.getElementById(elementId);
+            const hl = getHighLow(games); const div = document.getElementById(elementId);
             if (!hl) { div.innerHTML = ''; return; }
-            div.innerHTML = `<div class="hilow-container">
-                    <div class="hilow-box"><span class="hilow-label">🏆 BEST SCORE</span><div class="hilow-val hilow-best">+${hl.best.score}</div><div class="hilow-name">${hl.best.name}</div></div>
-                    <div class="hilow-box"><span class="hilow-label">💀 WORST SCORE</span><div class="hilow-val hilow-worst">${hl.worst.score}</div><div class="hilow-name">${hl.worst.name}</div></div></div>`;
+            div.innerHTML = `<div class="hilow-container"><div class="hilow-box"><span class="hilow-label">🏆 BEST SCORE</span><div class="hilow-val hilow-best">+${hl.best.score}</div><div class="hilow-name">${hl.best.name}</div></div><div class="hilow-box"><span class="hilow-label">💀 WORST SCORE</span><div class="hilow-val hilow-worst">${hl.worst.score}</div><div class="hilow-name">${hl.worst.name}</div></div></div>`;
         }
 
         function updateLineChart(games, canvasId, chartKey) {
@@ -861,14 +720,10 @@
             PLAYERS.forEach((name, i) => {
                 const ctx = document.getElementById('radarChart' + i).getContext('2d');
                 if (charts.radar[i]) charts.radar[i].destroy();
-                charts.radar[i] = new Chart(ctx, {
-                    type: 'radar',
-                    data: { labels: ['攻撃', '防御', 'トップ', '爆発', '安定'], datasets: [datasets[i]] },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { legend: { display: false }, title: { display: false } } }
-                });
+                charts.radar[i] = new Chart(ctx, { type: 'radar', data: { labels: ['攻撃', '防御', 'トップ', '爆発', '安定'], datasets: [datasets[i]] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { legend: { display: false } } } });
             });
         }
-        
+
         function deleteArchive(idx) {
             const target = appData.archives[idx];
             if(confirm(`シーズン「${target.name}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
