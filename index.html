@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="麻雀リーグ">
+    
+    <link rel="apple-touch-icon" href="https://1.bp.blogspot.com/-uKbdWwBqF7g/UvSIw28d2NI/AAAAAAAAdg0/D_iN2JMv98o/s800/mahjong_chun.png">
+
+    <base target="_top">
+    <title>3人麻雀リーグManager</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- 白ベースのデザイン --- */
+        :root { 
+            --primary: #1976d2;
+            --accent: #ff9800;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #333333;
+            --text-sub: #666666;
+            --border: #e0e0e0;
+            --danger: #e53935;
+            --positive: #1976d2;
+            --negative: #d32f2f;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; background: var(--bg); color: var(--text); 
+            padding-bottom: 90px; -webkit-tap-highlight-color: transparent;
+        }
+        
+        .container { max-width: 100%; padding: 15px; padding-top: 65px; box-sizing: border-box; }
+        #viewHome.container { padding-top: 15px; }
+
+        /* 固定ナビ */
+        .fixed-nav {
+            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+            background: rgba(240, 242, 245, 0.95); backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex; align-items: center; padding-left: 15px;
+            z-index: 2000; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .nav-arrow { font-size: 2rem; color: var(--primary); cursor: pointer; font-weight: bold; line-height: 1; padding: 5px 15px 5px 0; }
+
+        .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        h2 { font-size: 1.2rem; border-left: 5px solid var(--primary); padding-left: 12px; margin: 0 0 20px 0; color: #444; display: flex; justify-content: space-between; align-items: center; }
+        h3 { font-size: 1rem; margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #555; font-weight: bold; }
+
+        .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; text-align: center; color: white; margin-top: 15px; transition: opacity 0.2s; }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .btn-primary { background: var(--primary); }
+        .btn-accent { background: var(--accent); }
+        .btn-info { background: #0288d1; }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 20px; }
+        .btn-sm { padding: 8px 16px; font-size: 0.9rem; width: auto; display: inline-block; margin: 0; }
+        
+        .refresh-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 10px; color: var(--primary); }
+
+        .home-menu { display: flex; flex-direction: column; gap: 20px; min-height: 70vh; justify-content: center; padding: 20px; }
+        .home-title { text-align: center; font-size: 2rem; color: var(--primary); margin-bottom: 40px; font-weight: 800; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: #f8f9fa; color: #666; font-weight: 600; padding: 10px 4px; border-bottom: 2px solid var(--border); text-align: center; }
+        td { padding: 10px 4px; border-bottom: 1px solid var(--border); text-align: center; }
+        .val-plus { color: var(--positive); font-weight: bold; }
+        .val-minus { color: var(--negative); font-weight: bold; }
+        .sub-val { font-size: 0.75rem; color: #888; display: block; margin-top: 2px; }
+        
+        .hilow-container { display: flex; gap: 15px; margin-bottom: 15px; }
+        .hilow-box { flex: 1; background: #fafafa; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid #eee; }
+        .hilow-label { font-size: 0.8rem; color: #666; font-weight: bold; display: block; margin-bottom: 5px; }
+        .hilow-val { font-size: 1.3rem; font-weight: bold; }
+        .hilow-name { font-size: 0.85rem; color: #333; }
+        .hilow-best { color: var(--negative); } 
+        .hilow-worst { color: var(--positive); } 
+
+        .input-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px dashed #eee; }
+        .p-name { font-weight: bold; width: 50px; flex-shrink: 0; font-size: 1rem; }
+        .score-in { width: 35%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.2rem; text-align: right; -webkit-appearance: none; }
+        .opts { display: flex; flex-direction: column; gap: 5px; width: 30%; }
+        select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; width: 100%; box-sizing: border-box; background: #fff; }
+        
+        input[type="text"], input[type="number"] { padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 1rem; -webkit-appearance: none; }
+        .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .rule-item label { display: block; font-size: 0.9rem; font-weight: bold; color: #666; margin-bottom: 6px; }
+        .rule-list { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #555; }
+        .rule-list li { margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+        .rule-val { font-weight: bold; color: #333; }
+
+        .radar-grid { display: flex; flex-direction: column; gap: 30px; }
+        .radar-item { text-align: center; }
+        .radar-title { font-weight: bold; color: #555; margin-bottom: 10px; font-size: 1.1rem; border-bottom: 2px solid var(--border); display:inline-block; padding: 0 10px 5px 10px;}
+
+        details { margin-bottom: 15px; border: 1px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; }
+        summary { padding: 15px; font-weight: bold; cursor: pointer; background: #fafafa; list-style: none; display: flex; align-items: center; justify-content: space-between; color: var(--primary); }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: "▼"; font-size: 0.8rem; transition: transform 0.2s; }
+        details[open] summary::after { transform: rotate(180deg); }
+        .rule-content { padding: 15px; border-top: 1px solid var(--border); }
+
+        .hidden { display: none !important; }
+        #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:flex; justify-content:center; align-items:center; z-index:999; font-weight:bold; color: var(--primary); flex-direction: column; gap: 10px;}
+        #loader::after { content: "⏳"; font-size: 2rem; animation: spin 2s infinite linear; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .editing-mode { border: 3px solid var(--accent); background-color: #fff8e1; }
+        .chart-container { position: relative; height: 250px; width: 100%; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">読み込み中...</div>
+
+    <div id="viewHome" class="container hidden">
+        <h1 class="home-title">🀄 麻雀リーグ<br>Manager</h1>
+
+        <div id="homeCurrentSeasonCard" class="card hidden" style="border-left: 5px solid var(--primary); padding: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <div style="font-weight:bold; color:var(--primary); font-size:1.1rem; display:flex; align-items:center; gap:5px;">
+                    🏆 <span id="homeSeasonName">シーズン名</span>
+                </div>
+                <div style="font-size:0.85rem; color:#666; font-weight:bold; background:#f0f2f5; padding:4px 8px; border-radius:8px;" id="homeRemainGames">残り - 戦</div>
+            </div>
+            <table style="margin-top:5px;">
+                <thead><tr><th width="15%">順</th><th>名前</th><th>Total</th><th width="20%">pt差</th></tr></thead>
+                <tbody id="homeSeasonStatsBody"></tbody>
+            </table>
+        </div>
+
+        <div class="home-menu" style="min-height: auto; padding: 10px 0;">
+            <button class="btn btn-primary" onclick="navToSeason()">
+                📝 入力・確認<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">現在のシーズン</span>
+            </button>
+            <button class="btn btn-accent" onclick="navToArchive()">
+                📚 過去データ<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">終了したシーズン</span>
+            </button>
+            <button class="btn btn-info" onclick="navToAnalysis()">
+                📊 通算分析<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">全期間の合算・グラフ</span>
+            </button>
+            
+            <button class="btn btn-outline" style="background:#fff; border-color:#e65100; color:#e65100;" onclick="navToChips()">
+                💰 チップ貯金<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">現在の貯金額・増減入力</span>
+            </button>
+        </div>
+
+        <div class="card" style="text-align: center; border: 1px dashed var(--accent); background-color: #fffdf5; box-shadow: none; padding: 15px; margin-top: 20px;">
+            <div style="font-size: 0.8rem; font-weight: bold; color: #666; margin-bottom: 5px;">場代</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 2px;">
+                ¥<span id="homeVirtualCost">0</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #888;">
+                通算 <span id="homeTotalGames">0</span> 試合 × 1,200円
+            </div>
+        </div>
+    </div>
+
+    <div id="viewChips" class="container hidden">
+        <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
+        <h2>💰 チップ貯金</h2>
+        
+        <div class="card">
+            <h3>現在の貯金額 (1枚200円)</h3>
+            <table>
+                <thead><tr><th>名前</th><th>枚数</th><th>金額</th></tr></thead>
+                <tbody id="chipsTotalBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>➕ 対局終了後の増減入力</h3>
+            <p style="font-size:0.8rem; color:#666;">※獲得した枚数を入力してください。<br>（マイナスの場合は数字の前に - をつけます）</p>
+            <div id="chipsInputForm">
+                <div class="input-row"><div class="p-name">松下</div><input type="number" id="chip_in_0" class="score-in" placeholder="枚数" style="width:50%;"></div>
+                <div class="input-row"><div class="p-name">野田</div><input type="number" id="chip_in_1" class="score-in" placeholder="枚数" style="width:50%;"></div>
+                <div class="input-row"><div class="p-name">青木</div><input type="number" id="chip_in_2" class="score-in" placeholder="枚数" style="width:50%;"></div>
+            </div>
+            <button class="btn btn-primary" style="background:#e65100;" onclick="submitChips()">枚数の増減を保存</button>
+        </div>
+
+        <div class="card">
+            <h3>📜 履歴</h3>
+            <table class="hist-table">
+                <thead><tr><th width="30%">日時</th><th>松下</th><th>野田</th><th>青木</th><th width="15%">操作</th></tr></thead>
+                <tbody id="chipsHistoryBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="viewSeason" class="container hidden">
+        <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
+        <div id="setupArea" class="card hidden">
+            <h2>🏆 新規シーズン作成</h2>
+            <div style="margin-bottom:20px;"><label style="font-weight:bold;">シーズン名</label><input type="text" id="setupName" placeholder="例: 2026 春リーグ"></div>
+            <h3>基本設定</h3>
+            <div class="rule-grid"><div class="rule-item"><label>試合数</label><input type="number" id="setupGames" value="10"></div><div class="rule-item"><label>原点 (配給/返し)</label><input type="number" id="setupOrigin" value="35000"></div></div>
+            <div style="margin-bottom:10px;"><label style="font-weight:bold; font-size:0.9rem;">ウマ (1位/2位/3位)</label><div style="display:flex; gap:10px; margin-top:5px;"><input type="number" id="uma1" value="15"><input type="number" id="uma2" value="-5"><input type="number" id="uma3" value="-10"></div></div>
+            <h3>ルール詳細</h3>
+            <div class="rule-grid"><div class="rule-item"><label>🔴 赤ドラ</label><select id="ruleRed"><option value="1枚">1枚</option><option value="2枚">2枚</option></select></div><div class="rule-item"><label>🌸 花牌</label><select id="ruleFlower"><option value="あり">あり</option><option value="なし">なし</option></select></div><div class="rule-item"><label>🀄 北抜き</label><select id="ruleNorth"><option value="あり">あり</option><option value="なし">なし</option></select></div></div>
+            <div class="rule-item" style="margin-bottom:10px;"><label>📝 その他</label><input type="text" id="ruleOther"></div>
+            <button class="btn btn-primary" onclick="startSeason()">シーズン開始</button>
+        </div>
+
+        <div id="activeSeasonArea" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h2 id="seasonTitle" style="margin:0; border:none; padding:0; font-size:1.4rem;">シーズン名</h2><button class="refresh-btn" onclick="refreshData()" title="更新">🔄</button></div>
+            <details>
+                <summary>⚙️ ルール設定を確認</summary>
+                <div class="rule-content"><ul id="currentRuleList" class="rule-list"></ul></div>
+            </details>
+            <div class="card" id="inputCard">
+                <h2 id="inputHeader">🀄 結果入力 <span id="nextGameNum" style="font-size:1rem; color:#666; font-weight:normal"></span></h2>
+                <div id="inputForm">
+                    <div class="input-row"><div class="p-name">松下</div><input type="number" id="score_0" class="score-in" placeholder="点数"><div class="opts"><select id="bust_0"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
+                    <div class="input-row"><div class="p-name">野田</div><input type="number" id="score_1" class="score-in" placeholder="点数"><div class="opts"><select id="bust_1"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
+                    <div class="input-row"><div class="p-name">青木</div><input type="number" id="score_2" class="score-in" placeholder="点数"><div class="opts"><select id="bust_2"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
+                </div>
+                <div id="errorMsg" style="color:red; text-align:center; display:none; margin:10px 0; font-weight:bold;"></div>
+                <div id="btnGroupSubmit"><button class="btn btn-primary" id="submitBtn" onclick="submitGame()">結果を保存</button></div>
+                <div id="btnGroupEdit" class="hidden" style="display:flex; gap:10px;"><button class="btn btn-accent" onclick="updateGame()">修正を実行</button><button class="btn btn-outline" style="margin-top:0;" onclick="cancelEdit()">キャンセル</button></div>
+            </div>
+            <div class="card">
+                <h2>📊 トータル成績</h2>
+                <table><thead><tr><th>名前</th><th>Total</th><th>pt差</th><th>ラス回避</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="leaderboardBody"></tbody></table>
+                <div id="hilowArea" style="margin-top:20px;"></div>
+            </div>
+            <div class="card"><h2>📈 推移グラフ</h2><div class="chart-container"><canvas id="scoreChart"></canvas></div></div>
+            <div class="card">
+                <h2>📜 履歴</h2>
+                <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th><th width="15%">操作</th></tr></thead><tbody id="historyBody"></tbody></table>
+                <button class="btn btn-danger" style="margin-top:25px;" onclick="finishSeason()">⚠ シーズン終了・アーカイブへ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewArchive" class="container hidden">
+        <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
+        <h2>📚 終了したシーズン</h2>
+        <div id="archiveContainer"></div>
+    </div>
+
+    <div id="viewArchiveDetail" class="container hidden">
+        <div class="fixed-nav"><span class="nav-arrow" onclick="navToArchive()">←</span></div>
+        <h2 id="archiveDetailTitle">詳細</h2>
+        <div class="card"><h3>⚙️ ルール設定</h3><ul id="archiveRuleList" class="rule-list"></ul></div>
+        <div class="card">
+            <h3>📊 最終成績</h3>
+            <table><thead><tr><th>名前</th><th>Total</th><th>連対率</th><th>ラス回避</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailStats"></tbody></table>
+            <div id="archiveHilowArea" style="margin-top:20px;"></div>
+        </div>
+        <div class="card"><h3>📈 推移グラフ</h3><div class="chart-container"><canvas id="archiveScoreChart"></canvas></div></div>
+        <div class="card">
+            <h3>📜 履歴</h3>
+            <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailGames"></tbody></table>
+            </div>
+    </div>
+
+    <div id="viewAnalysis" class="container hidden">
+        <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
+        <h2>📊 通算データ分析</h2>
+        <div class="card">
+            <h3>🕸 レーダーチャート</h3>
+            <div class="radar-grid">
+                <div class="radar-item"><div class="radar-title">松下</div><div class="chart-container" style="height:250px;"><canvas id="radarChart0"></canvas></div></div>
+                <div class="radar-item"><div class="radar-title">野田</div><div class="chart-container" style="height:250px;"><canvas id="radarChart1"></canvas></div></div>
+                <div class="radar-item"><div class="radar-title">青木</div><div class="chart-container" style="height:250px;"><canvas id="radarChart2"></canvas></div></div>
+            </div>
+            <p style="font-size:0.8rem; color:#666; margin-top:20px; text-align:center;">攻撃力(平均Pt) / 防御力(ラス回避) / トップ率<br>爆発力(最高Pt) / 安定感(平均順位)</p>
+        </div>
+        <div class="card">
+            <h3>🔢 通算成績 (全<span id="totalGamesCount">0</span>戦)</h3>
+            <table><thead><tr><th>名前</th><th>Total</th><th>平均Pt</th><th>トップ率</th><th>連対率</th><th>ラス回避</th></tr></thead><tbody id="analysisTableBody"></tbody></table>
+        </div>
+    </div>
+
+    <script>
+        const PLAYERS = ["松下", "野田", "青木"];
+        const COLORS = ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'];
+        const COLORS_ALPHA = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)'];
+        
+        Chart.defaults.color = '#666';
+        Chart.defaults.borderColor = '#e0e0e0';
+
+        let appData = { current: { active: false, config: {}, games: [] }, archives: [], chips: { totals: [0, 0, 0], history: [] } };
+        let editingGameId = null; 
+        let charts = { current: null, archive: null, radar: [null, null, null] };
+
+        function updateVirtualCostDisplay() {
+            let totalGames = 0;
+            if (appData.current && appData.current.games) {
+                totalGames += appData.current.games.length;
+            }
+            if (appData.archives && appData.archives.length > 0) {
+                appData.archives.forEach(season => {
+                    if (season.games) {
+                        totalGames += season.games.length;
+                    }
+                });
+            }
+            const cost = totalGames * 1200;
+            document.getElementById('homeTotalGames').innerText = totalGames.toLocaleString();
+            document.getElementById('homeVirtualCost').innerText = cost.toLocaleString();
+        }
+
+        function updateHomeCurrentSeason() {
+            const card = document.getElementById('homeCurrentSeasonCard');
+            if (!appData.current || !appData.current.active) {
+                card.classList.add('hidden'); 
+                return;
+            }
+            card.classList.remove('hidden');
+
+            const c = appData.current.config || {};
+            const total = c.totalGames || 0;
+            const currentCount = appData.current.games ? appData.current.games.length : 0;
+            const remain = total - currentCount;
+
+            document.getElementById('homeSeasonName').innerText = appData.current.name || "名称未設定";
+            document.getElementById('homeRemainGames').innerText = `残り ${remain >= 0 ? remain : 0} 戦`;
+
+            const stats = calculateStats(appData.current.games || []);
+            const tbody = document.getElementById('homeSeasonStatsBody');
+            tbody.innerHTML = '';
+            
+            stats.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
+                
+                let diffStr = '-';
+                if (idx > 0) {
+                    const diff = (stats[idx-1].total - s.total).toFixed(1);
+                    diffStr = `<span style="color:#666;">▼${diff}</span>`; 
+                }
+
+                tr.innerHTML = `<td>${idx + 1}</td><td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total > 0 ? '+' + s.total : s.total}</td><td style="font-size:0.85rem;">${diffStr}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.onload = function() {
+            google.script.run.withSuccessHandler(onDataLoaded).loadFromSheet();
+        };
+
+        function onDataLoaded(json) {
+            document.getElementById('loader').classList.add('hidden');
+            if (json && json !== "") {
+                try {
+                    const parsed = JSON.parse(json);
+                    if (!parsed.current) { appData.current = parsed; appData.archives = []; }
+                    else { appData = parsed; }
+                } catch(e) { console.error("Parse Error", e); }
+            }
+            
+            if (!appData.chips) {
+                appData.chips = { totals: [0, 0, 0], history: [] };
+            }
+
+            updateVirtualCostDisplay();
+            updateHomeCurrentSeason(); 
+
+            if(document.querySelectorAll('.container:not(.hidden)').length === 0) {
+                document.getElementById('viewHome').classList.remove('hidden');
+            }
+        }
+
+        function refreshData() {
+            document.getElementById('loader').classList.remove('hidden');
+            google.script.run.withSuccessHandler((json) => {
+                onDataLoaded(json);
+                if(!document.getElementById('viewSeason').classList.contains('hidden')) renderSeasonView();
+                if(!document.getElementById('viewChips').classList.contains('hidden')) renderChipsView();
+            }).loadFromSheet();
+        }
+
+        function saveData(callback) {
+            document.getElementById('loader').classList.remove('hidden');
+            const json = JSON.stringify(appData);
+            google.script.run.withSuccessHandler(() => {
+                document.getElementById('loader').classList.add('hidden');
+                if (callback) callback();
+            }).saveToSheet(json);
+        }
+
+        function hideAllViews() {
+            ['viewHome', 'viewSeason', 'viewArchive', 'viewArchiveDetail', 'viewAnalysis', 'viewChips'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        }
+        
+        function navToHome() { 
+            hideAllViews(); 
+            updateVirtualCostDisplay();
+            updateHomeCurrentSeason();
+            document.getElementById('viewHome').classList.remove('hidden'); 
+        }
+        
+        function navToSeason() { hideAllViews(); document.getElementById('viewSeason').classList.remove('hidden'); renderSeasonView(); }
+        function navToArchive() { hideAllViews(); document.getElementById('viewArchive').classList.remove('hidden'); renderArchiveView(); }
+        function navToAnalysis() { hideAllViews(); document.getElementById('viewAnalysis').classList.remove('hidden'); renderAnalysisView(); }
+        function navToArchiveDetail(idx) { hideAllViews(); document.getElementById('viewArchiveDetail').classList.remove('hidden'); renderArchiveDetail(idx); }
+
+        function navToChips() {
+            hideAllViews();
+            document.getElementById('viewChips').classList.remove('hidden');
+            renderChipsView();
+        }
+
+        function renderChipsView() {
+            if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
+            
+            const tBody = document.getElementById('chipsTotalBody');
+            tBody.innerHTML = '';
+            PLAYERS.forEach((p, i) => {
+                const count = appData.chips.totals[i] || 0;
+                const yen = count * 200; 
+                const tr = document.createElement('tr');
+                const colorClass = count >= 0 ? 'val-plus' : 'val-minus';
+                tr.innerHTML = `<td style="font-weight:bold">${p}</td>
+                                <td class="${colorClass}">${count > 0 ? '+'+count : count} 枚</td>
+                                <td class="${colorClass}" style="font-size:1.1rem;">¥${yen.toLocaleString()}</td>`;
+                tBody.appendChild(tr);
+            });
+
+            for(let i=0; i<3; i++) document.getElementById(`chip_in_${i}`).value = '';
+
+            const hBody = document.getElementById('chipsHistoryBody');
+            hBody.innerHTML = '';
+            if (appData.chips.history) {
+                [...appData.chips.history].reverse().forEach((h, reverseIdx) => {
+                    const orgIndex = appData.chips.history.length - 1 - reverseIdx;
+                    const tr = document.createElement('tr');
+                    let cells = `<td style="font-size:0.8rem; color:#666;">${h.date}</td>`;
+                    h.diffs.forEach(d => {
+                        const colorClass = d >= 0 ? 'val-plus' : 'val-minus';
+                        cells += `<td class="${colorClass}">${d > 0 ? '+'+d : (d === 0 ? '-' : d)}</td>`;
+                    });
+                    cells += `<td><button class="btn btn-outline btn-sm" style="padding:4px 8px; margin:0;" onclick="deleteChipHistory(${orgIndex})">取消</button></td>`;
+                    tr.innerHTML = cells;
+                    hBody.appendChild(tr);
+                });
+            }
+        }
+
+        function submitChips() {
+            if (!appData.chips) appData.chips = { totals: [0, 0, 0], history: [] };
+            
+            let diffs = [];
+            let hasInput = false;
+            for(let i=0; i<3; i++) {
+                let val = document.getElementById(`chip_in_${i}`).value;
+                if (val === '') {
+                    diffs.push(0); 
+                } else {
+                    diffs.push(parseInt(val));
+                    hasInput = true;
+                }
+            }
+            
+            if (!hasInput) {
+                alert("枚数を入力してください");
+                return;
+            }
+
+            for(let i=0; i<3; i++) {
+                appData.chips.totals[i] += diffs[i];
+            }
+            
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            appData.chips.history.push({ date: dateStr, diffs: diffs });
+            
+            saveData(renderChipsView);
+        }
+
+        function deleteChipHistory(idx) {
+            if(!confirm("このチップ増減履歴を取り消しますか？\n（現在の貯金額から入力分が差し引かれます）")) return;
+            const h = appData.chips.history[idx];
+            
+            for(let i=0; i<3; i++) {
+                appData.chips.totals[i] -= h.diffs[i];
+            }
+            
+            appData.chips.history.splice(idx, 1);
+            saveData(renderChipsView);
+        }
+
+        function startSeason() {
+            const name = document.getElementById('setupName').value || "無題";
+            const totalGames = parseInt(document.getElementById('setupGames').value);
+            const originPt = parseInt(document.getElementById('setupOrigin').value);
+            const uma = [parseInt(document.getElementById('uma1').value), parseInt(document.getElementById('uma2').value), parseInt(document.getElementById('uma3').value)];
+            const rules = {
+                red: document.getElementById('ruleRed').value,
+                flower: document.getElementById('ruleFlower').value,
+                north: document.getElementById('ruleNorth').value,
+                other: document.getElementById('ruleOther').value
+            };
+            appData.current = { active: true, name, config: { totalGames, startPt: originPt, returnPt: originPt, uma, rules }, games: [] };
+            saveData(renderSeasonView);
+        }
+
+        function finishSeason() {
+            if(!confirm("シーズンを終了してアーカイブに保存しますか？")) return;
+            const stats = calculateStats(appData.current.games);
+            const archiveData = {
+                name: appData.current.name, date: new Date().toLocaleDateString(),
+                gamesCount: appData.current.games.length, config: appData.current.config,
+                stats: stats, games: appData.current.games
+            };
+            if (!appData.archives) appData.archives = [];
+            appData.archives.unshift(archiveData);
+            appData.current = { active: false, config: {}, games: [] };
+            saveData(() => { alert("終了しました"); navToHome(); });
+        }
+
+        function getInputs() {
+            const scores = []; const busts = []; let total = 0;
+            for(let i=0; i<3; i++) {
+                const s = document.getElementById(`score_${i}`).value;
+                if(s === "") return null;
+                scores.push(parseInt(s)); total += parseInt(s);
+                busts.push(parseInt(document.getElementById(`bust_${i}`).value));
+            }
+            return { scores, busts, total };
+        }
+        function clearInputs() {
+            for(let i=0; i<3; i++) { document.getElementById(`score_${i}`).value = ""; document.getElementById(`bust_${i}`).value = "0"; }
+            editingGameId = null;
+            document.getElementById('btnGroupSubmit').classList.remove('hidden');
+            document.getElementById('btnGroupEdit').classList.add('hidden');
+            document.getElementById('inputCard').classList.remove('editing-mode');
+            document.getElementById('inputHeader').innerText = `🀄 結果入力 (第${appData.current.games.length + 1}戦)`;
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+        function submitGame() {
+            const inp = getInputs(); if(!inp) { alert("入力してください"); return; }
+            const expected = appData.current.config.startPt * 3;
+            if(inp.total !== expected) {
+                document.getElementById('errorMsg').style.display = 'block';
+                document.getElementById('errorMsg').innerText = `合計不一致: ${inp.total} (規定:${expected})`;
+                return;
+            }
+            const pts = calculatePoints(inp.scores, inp.busts);
+            appData.current.games.push({ id: Date.now().toString(), displayId: appData.current.games.length + 1, rawScores: inp.scores, busts: inp.busts, finalPts: pts });
+            saveData(() => { clearInputs(); renderSeasonView(); });
+        }
+        function editGame(idx) {
+            const game = appData.current.games[idx];
+            editingGameId = idx;
+            for(let i=0; i<3; i++) { document.getElementById(`score_${i}`).value = game.rawScores[i]; document.getElementById(`bust_${i}`).value = game.busts ? game.busts[i] : 0; }
+            document.getElementById('inputCard').scrollIntoView({behavior: "smooth"});
+            document.getElementById('inputCard').classList.add('editing-mode');
+            document.getElementById('inputHeader').innerText = `📝 第${game.displayId}戦を修正中...`;
+            document.getElementById('btnGroupSubmit').classList.add('hidden');
+            document.getElementById('btnGroupEdit').classList.remove('hidden');
+        }
+        function updateGame() {
+            if (editingGameId === null) return;
+            const inp = getInputs(); if(!inp) return;
+            const expected = appData.current.config.startPt * 3;
+            if(inp.total !== expected) { alert(`合計不一致: ${inp.total}`); return; }
+            const pts = calculatePoints(inp.scores, inp.busts);
+            const target = appData.current.games[editingGameId];
+            target.rawScores = inp.scores; target.busts = inp.busts; target.finalPts = pts;
+            saveData(() => { clearInputs(); renderSeasonView(); });
+        }
+        function cancelEdit() { clearInputs(); }
+
+        function calculatePoints(rawScores, bustCounts) {
+            const indices = [0, 1, 2].sort((a, b) => rawScores[b] - rawScores[a]);
+            const finalPts = [0, 0, 0];
+            const { returnPt, startPt, uma } = appData.current.config;
+            const okaTotal = (returnPt - startPt) * 3 / 1000;
+            indices.forEach((pIdx, rank) => {
+                let pt = (rawScores[pIdx] - returnPt) / 1000;
+                pt += uma[rank];
+                if (rank === 0) pt += okaTotal;
+                if(bustCounts) pt += (bustCounts[pIdx] * 10);
+                if(rawScores[pIdx] <= 0) pt -= 10;
+                finalPts[pIdx] = Math.round(pt * 10) / 10;
+            });
+            return finalPts;
+        }
+
+        function calculateStats(games) {
+            let stats = PLAYERS.map(name => ({ name: name, total: 0, ranks: [0,0,0], gameCount: 0 }));
+            games.forEach(g => {
+                const pIds = [0,1,2].sort((a,b) => g.rawScores[b] - g.rawScores[a]);
+                g.finalPts.forEach((pt, idx) => {
+                    stats[idx].total += pt;
+                    stats[idx].gameCount++;
+                    stats[idx].ranks[pIds.indexOf(idx)]++;
+                });
+            });
+            return stats.map(s => {
+                s.total = parseFloat(s.total.toFixed(1));
+                s.rentai = s.gameCount > 0 ? ((s.ranks[0] + s.ranks[1]) / s.gameCount * 100).toFixed(1) + '%' : '-';
+                s.lastAvoid = s.gameCount > 0 ? ((s.gameCount - s.ranks[2]) / s.gameCount * 100).toFixed(1) + '%' : '-';
+                s.avgRank = s.gameCount > 0 ? ((s.ranks[0]*1 + s.ranks[1]*2 + s.ranks[2]*3) / s.gameCount).toFixed(2) : "-";
+                return s;
+            }).sort((a,b) => b.total - a.total);
+        }
+
+        function getHighLow(games) {
+            let best = { score: -9999, name: '-' };
+            let worst = { score: 9999, name: '-' };
+            games.forEach(g => {
+                g.finalPts.forEach((pt, idx) => {
+                    if(pt > best.score) { best.score = pt; best.name = PLAYERS[idx]; }
+                    if(pt < worst.score) { worst.score = pt; worst.name = PLAYERS[idx]; }
+                });
+            });
+            if (games.length === 0) return null;
+            return { best, worst };
+        }
+
+        function renderSeasonView() {
+            const setup = document.getElementById('setupArea');
+            const active = document.getElementById('activeSeasonArea');
+            if (!appData.current.active) { setup.classList.remove('hidden'); active.classList.add('hidden'); return; }
+            setup.classList.add('hidden'); active.classList.remove('hidden');
+            
+            document.getElementById('seasonTitle').innerText = appData.current.name;
+            document.getElementById('nextGameNum').innerText = `(第${appData.current.games.length + 1}戦)`;
+
+            const ruleList = document.getElementById('currentRuleList'); ruleList.innerHTML = '';
+            const c = appData.current.config || {}; const r = c.rules || {};
+            
+            const total = c.totalGames || 0;
+            const current = appData.current.games.length;
+            const remain = total - current;
+            const progressText = `${total}戦 (残り${remain >= 0 ? remain : 0}戦)`;
+
+            const items = [
+                { label: '総試合数', val: progressText },
+                { label: '原点', val: c.startPt || '-' }, 
+                { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
+                { label: '赤ドラ', val: r.red || '-' }, { label: '花牌', val: r.flower || '-' },
+                { label: '北抜き', val: r.north || '-' }, { label: 'その他', val: r.other || 'なし' }
+            ];
+            items.forEach(item => {
+                const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li);
+            });
+
+            const stats = calculateStats(appData.current.games);
+            renderStatsTableWithDiff('leaderboardBody', stats);
+            renderHighLow('hilowArea', appData.current.games);
+            updateLineChart(appData.current.games, 'scoreChart', 'current');
+
+            const histBody = document.getElementById('historyBody');
+            histBody.innerHTML = '';
+            
+            // ▼▼ 変更: 現在のシーズンの履歴を着順で表示 ▼▼
+            appData.current.games.map((g, i) => ({...g, orgIndex: i})).reverse().forEach(g => {
+                const tr = document.createElement('tr');
+                let cells = `<td>${g.displayId}</td>`;
+                
+                // ポイント(finalPts)が高い順に並び替えるためのインデックス配列を作成
+                const sortedIndices = [0, 1, 2].sort((a, b) => g.finalPts[b] - g.finalPts[a]);
+                
+                sortedIndices.forEach(pIdx => {
+                    const pt = g.finalPts[pIdx];
+                    const raw = g.rawScores[pIdx];
+                    const ptClass = pt >= 0 ? 'val-plus' : 'val-minus';
+                    const name = PLAYERS[pIdx];
+                    // 名前も小さく表示する
+                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${name}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${raw})</div></td>`;
+                });
+                
+                cells += `<td><button class="btn btn-outline btn-sm" onclick="editGame(${g.orgIndex})">修正</button></td>`;
+                tr.innerHTML = cells;
+                histBody.appendChild(tr);
+            });
+            // ▲▲ 変更ここまで ▲▲
+        }
+
+        function renderStatsTableWithDiff(elementId, stats) {
+            const tbody = document.getElementById(elementId); tbody.innerHTML = '';
+            stats.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
+                
+                let diffStr = '-';
+                if (idx > 0) {
+                    const diff = (stats[idx-1].total - s.total).toFixed(1);
+                    diffStr = `<span style="color:#666;">▼${diff}</span>`;
+                }
+
+                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td>
+                                <td style="font-size:0.85rem;">${diffStr}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderArchiveView() {
+            const container = document.getElementById('archiveContainer');
+            container.innerHTML = '';
+            if (!appData.archives || appData.archives.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666;">データがありません</p>';
+                return;
+            }
+            appData.archives.forEach((season, idx) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                const winner = season.stats[0];
+                const displayStats = calculateStats(season.games);
+
+                let html = `<h3 style="margin:0 0 10px 0; border-bottom:1px solid #eee; padding-bottom:5px;">${season.name} <span style="font-size:0.8rem; font-weight:normal; float:right">${season.date}終了</span></h3>
+                    <div style="margin-bottom:10px; font-weight:bold; color:var(--primary);">🏆 優勝: ${winner.name} (${winner.total > 0 ? '+' : ''}${winner.total})</div>
+                    <table><thead><tr style="background:#eee;"><th>順</th><th>名前</th><th>Total</th><th>連対率</th></tr></thead><tbody>`;
+                
+                displayStats.forEach((s, r) => {
+                    const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
+                    html += `<tr><td>${r + 1}</td><td>${s.name}</td><td class="${ptClass}">${s.total>0?'+'+s.total:s.total}</td><td>${s.rentai}</td></tr>`;
+                });
+                
+                html += `</tbody></table>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="btn btn-outline btn-sm" style="flex:2;" onclick="navToArchiveDetail(${idx})">📜 詳細を見る</button>
+                        <button class="btn btn-danger btn-sm" style="flex:1; background:#999;" onclick="deleteArchive(${idx})">🗑 削除</button>
+                    </div>`;
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+        }
+
+        function renderArchiveDetail(idx) {
+            const season = appData.archives[idx];
+            document.getElementById('archiveDetailTitle').innerText = `${season.name} 詳細`;
+            
+            const ruleList = document.getElementById('archiveRuleList'); ruleList.innerHTML = '';
+            const c = season.config || {}; const r = c.rules || {};
+            const items = [
+                { label: '原点', val: c.startPt || '-' }, { label: 'ウマ', val: c.uma ? c.uma.join('/') : '-' },
+                { label: '赤ドラ', val: r.red || '-' }, { label: '花牌', val: r.flower || '-' },
+                { label: '北抜き', val: r.north || '-' }, { label: 'その他', val: r.other || 'なし' }
+            ];
+            items.forEach(item => {
+                const li = document.createElement('li'); li.innerHTML = `<span>${item.label}</span><span class="rule-val">${item.val}</span>`; ruleList.appendChild(li);
+            });
+
+            const displayStats = calculateStats(season.games);
+            renderStatsTable('archiveDetailStats', displayStats);
+            renderHighLow('archiveHilowArea', season.games);
+            updateLineChart(season.games, 'archiveScoreChart', 'archive');
+
+            const gamesBody = document.getElementById('archiveDetailGames'); gamesBody.innerHTML = '';
+            
+            // ▼▼ 変更: アーカイブの履歴を着順で表示 ▼▼
+            [...season.games].reverse().forEach(g => {
+                const tr = document.createElement('tr');
+                let cells = `<td>${g.displayId}</td>`;
+                
+                const sortedIndices = [0, 1, 2].sort((a, b) => g.finalPts[b] - g.finalPts[a]);
+                
+                sortedIndices.forEach(pIdx => {
+                    const pt = g.finalPts[pIdx];
+                    const raw = g.rawScores[pIdx];
+                    const ptClass = pt >= 0 ? 'val-plus' : 'val-minus';
+                    const name = PLAYERS[pIdx];
+                    cells += `<td><div style="font-size:0.75rem; color:#555; font-weight:bold; margin-bottom:2px;">${name}</div><div class="${ptClass}">${pt>0?'+'+pt:pt}</div><div class="sub-val">(${raw})</div></td>`;
+                });
+                
+                tr.innerHTML = cells;
+                gamesBody.appendChild(tr);
+            });
+            // ▲▲ 変更ここまで ▲▲
+        }
+
+        function renderStatsTable(elementId, stats) {
+            const tbody = document.getElementById(elementId); tbody.innerHTML = '';
+            stats.forEach(s => {
+                const tr = document.createElement('tr');
+                const ptClass = s.total >= 0 ? 'val-plus' : 'val-minus';
+                tr.innerHTML = `<td style="font-weight:bold">${s.name}</td><td class="${ptClass}" style="font-size:1.1rem">${s.total>0?'+'+s.total:s.total}</td>
+                                <td>${s.rentai}</td><td>${s.lastAvoid}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAnalysisView() {
+            let stats = PLAYERS.map(name => ({ name: name, totalPt: 0, ranks: [0,0,0], gameCount: 0, maxPt: -9999, topCount: 0 }));
+            let totalGames = 0;
+
+            let seasons = [];
+            if(appData.current && appData.current.active) seasons.push(appData.current);
+            if(appData.archives) seasons = seasons.concat(appData.archives);
+
+            seasons.forEach(season => {
+                const startPt = (season.config && season.config.startPt) ? season.config.startPt : 35000;
+                let weight = 1.0;
+                if (startPt === 50000) {
+                    weight = 0.7; 
+                }
+
+                if(season.games) {
+                    totalGames += season.games.length;
+                    season.games.forEach(g => {
+                        const pIds = [0,1,2].sort((a,b) => g.rawScores[b] - g.rawScores[a]);
+                        g.finalPts.forEach((pt, idx) => {
+                            stats[idx].totalPt += (pt * weight);
+                            stats[idx].gameCount++;
+                            stats[idx].ranks[pIds.indexOf(idx)]++;
+                            if(pt > stats[idx].maxPt) stats[idx].maxPt = pt;
+                        });
+                    });
+                }
+            });
+
+            document.getElementById('totalGamesCount').innerText = totalGames;
+
+            const tbody = document.getElementById('analysisTableBody'); tbody.innerHTML = '';
+            stats.forEach(s => {
+                if(s.gameCount === 0) return;
+                s.avgPt = (s.totalPt / s.gameCount).toFixed(1);
+                s.topRate = (s.ranks[0] / s.gameCount * 100).toFixed(1);
+                s.rentaiRate = ((s.ranks[0] + s.ranks[1]) / s.gameCount * 100).toFixed(1);
+                s.lastRate = (s.ranks[2] / s.gameCount * 100).toFixed(1);
+                s.avgRank = ((s.ranks[0]*1 + s.ranks[1]*2 + s.ranks[2]*3) / s.gameCount).toFixed(2);
+                s.lastAvoid = (100 - s.lastRate).toFixed(1);
+
+                const tr = document.createElement('tr');
+                const ptClass = s.totalPt >= 0 ? 'val-plus' : 'val-minus';
+                tr.innerHTML = `<td style="color:var(--primary); font-weight:bold;">${s.name}</td><td class="${ptClass}">${s.totalPt.toFixed(1)}</td><td>${s.avgPt}</td><td>${s.topRate}%</td><td>${s.rentaiRate}%</td><td>${s.lastAvoid}%</td>`;
+                tbody.appendChild(tr);
+            });
+
+            const datasets = stats.map((s, i) => {
+                let v1 = Math.min(100, Math.max(0, (parseFloat(s.avgPt) + 20) * 2.5));
+                let v2 = (parseFloat(s.lastAvoid) - 40) * 2;
+                let v3 = (parseFloat(s.topRate) - 10) * 2;
+                let v4 = Math.min(100, Math.max(0, (s.maxPt - 30))); 
+                let v5 = (2.5 - parseFloat(s.avgRank)) * 100;
+                return { label: s.name, data: [v1, v2, v3, v4, v5], backgroundColor: COLORS_ALPHA[i], borderColor: COLORS[i], borderWidth: 2 };
+            });
+            updateRadarChart(datasets);
+        }
+
+        function renderHighLow(elementId, games) {
+            const hl = getHighLow(games);
+            const div = document.getElementById(elementId);
+            if (!hl) { div.innerHTML = ''; return; }
+            div.innerHTML = `<div class="hilow-container">
+                    <div class="hilow-box"><span class="hilow-label">🏆 BEST SCORE</span><div class="hilow-val hilow-best">+${hl.best.score}</div><div class="hilow-name">${hl.best.name}</div></div>
+                    <div class="hilow-box"><span class="hilow-label">💀 WORST SCORE</span><div class="hilow-val hilow-worst">${hl.worst.score}</div><div class="hilow-name">${hl.worst.name}</div></div></div>`;
+        }
+
+        function updateLineChart(games, canvasId, chartKey) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const labels = ['Start']; games.forEach((g, i) => labels.push(i + 1));
+            const datasets = PLAYERS.map((name, pIdx) => {
+                const data = [0]; let cur = 0; games.forEach(g => { cur += g.finalPts[pIdx]; data.push(cur); });
+                return { label: name, data, borderColor: COLORS[pIdx], backgroundColor: COLORS[pIdx], tension: 0.1, fill: false };
+            });
+            if (charts[chartKey]) charts[chartKey].destroy();
+            charts[chartKey] = new Chart(ctx, { type: 'line', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } }, plugins: { legend: { position: 'bottom' } } } });
+        }
+
+        function updateRadarChart(datasets) {
+            PLAYERS.forEach((name, i) => {
+                const ctx = document.getElementById('radarChart' + i).getContext('2d');
+                if (charts.radar[i]) charts.radar[i].destroy();
+                charts.radar[i] = new Chart(ctx, {
+                    type: 'radar',
+                    data: { labels: ['攻撃', '防御', 'トップ', '爆発', '安定'], datasets: [datasets[i]] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { legend: { display: false }, title: { display: false } } }
+                });
+            });
+        }
+        
+        function deleteArchive(idx) {
+            const target = appData.archives[idx];
+            if(confirm(`シーズン「${target.name}」を完全に削除しますか？\nこの操作は取り消せません。`)) {
+                appData.archives.splice(idx, 1);
+                saveData(renderArchiveView);
+            }
+        }
+    </script>
+</body>
+</html>
