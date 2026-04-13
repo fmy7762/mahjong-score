@@ -13,153 +13,378 @@
     <title>N.LEAGUE ScoreManager</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { 
-            --primary: #1976d2;
-            --accent: #ff9800;
-            --bg: #f0f2f5;
-            --card: #ffffff;
-            --text: #333333;
-            --text-sub: #666666;
-            --border: #e0e0e0;
-            --danger: #e53935;
-            --positive: #1976d2;
-            --negative: #d32f2f;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #a78bfa;
+            --accent: #f59e0b;
+            --accent2: #06b6d4;
+            --bg: #0f0f1a;
+            --bg2: #16162a;
+            --card: rgba(255,255,255,0.05);
+            --card-solid: #1e1e35;
+            --text: #f1f1f8;
+            --text-sub: #9090b0;
+            --border: rgba(255,255,255,0.08);
+            --danger: #ef4444;
+            --positive: #34d399;
+            --negative: #f87171;
+            --glass: rgba(255,255,255,0.06);
+            --glass-border: rgba(255,255,255,0.12);
         }
 
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            margin: 0; padding: 0; background: var(--bg); color: var(--text); 
-            padding-bottom: 90px; -webkit-tap-highlight-color: transparent;
-        }
-        
-        .container { max-width: 100%; padding: 15px; padding-top: 65px; box-sizing: border-box; }
-        #viewHome.container { padding-top: 15px; }
+        * { box-sizing: border-box; }
 
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0; padding: 0;
+            background: var(--bg);
+            background-image: radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.12) 0%, transparent 60%),
+                              radial-gradient(ellipse at 80% 20%, rgba(6,182,212,0.08) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text);
+            padding-bottom: 100px;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 100%; padding: 16px; padding-top: 70px; }
+        #viewHome.container { padding-top: 20px; }
+
+        /* ── Nav ── */
         .fixed-nav {
-            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
-            background: rgba(240, 242, 245, 0.95); backdrop-filter: blur(5px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            display: flex; align-items: center; padding-left: 15px;
-            z-index: 2000; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: fixed; top: 0; left: 0; width: 100%; height: 56px;
+            background: rgba(15,15,26,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; padding: 0 16px;
+            z-index: 2000;
         }
-        .nav-arrow { font-size: 2rem; color: var(--primary); cursor: pointer; font-weight: bold; line-height: 1; padding: 5px 15px 5px 0; }
+        .nav-arrow {
+            font-size: 1.6rem; color: var(--primary-light);
+            cursor: pointer; font-weight: 700; line-height: 1;
+            padding: 6px 16px 6px 0;
+            transition: opacity 0.2s;
+        }
+        .nav-arrow:active { opacity: 0.6; }
 
-        .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        h2 { font-size: 1.2rem; border-left: 5px solid var(--primary); padding-left: 12px; margin: 0 0 20px 0; color: #444; display: flex; justify-content: space-between; align-items: center; }
-        h3 { font-size: 1rem; margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #555; font-weight: bold; }
+        /* ── Cards ── */
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+        }
+        .card-solid {
+            background: var(--card-solid);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
 
-        .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; text-align: center; color: white; margin-top: 15px; transition: opacity 0.2s; }
-        .btn:active { opacity: 0.8; transform: scale(0.98); }
-        .btn-primary { background: var(--primary); }
-        .btn-accent { background: var(--accent); }
-        .btn-info { background: #0288d1; }
-        .btn-danger { background: var(--danger); }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 20px; }
-        .btn-sm { padding: 8px 16px; font-size: 0.9rem; width: auto; display: inline-block; margin: 0; }
-        
-        .refresh-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 10px; color: var(--primary); }
+        h2 {
+            font-size: 1.05rem; font-weight: 700;
+            margin: 0 0 18px 0; color: var(--text);
+            display: flex; justify-content: space-between; align-items: center;
+            letter-spacing: 0.02em;
+        }
+        h2::before { content: ''; display: inline-block; width: 3px; height: 1em; background: linear-gradient(180deg, var(--primary-light), var(--accent2)); border-radius: 2px; margin-right: 10px; flex-shrink: 0; }
+        h3 {
+            font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-sub); margin: 16px 0 12px 0;
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+        }
 
-        .home-menu { display: flex; flex-direction: column; gap: 20px; min-height: 70vh; justify-content: center; padding: 20px; }
-        .home-title { text-align: center; font-size: 2rem; color: var(--primary); margin-bottom: 40px; font-weight: 800; }
+        /* ── Buttons ── */
+        .btn {
+            display: block; width: 100%; padding: 15px; border: none;
+            border-radius: 14px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; text-align: center; color: white;
+            margin-top: 12px; transition: all 0.2s; letter-spacing: 0.02em;
+        }
+        .btn:active { transform: scale(0.97); opacity: 0.85; }
+        .btn-primary { background: linear-gradient(135deg, #7c3aed, #5b21b6); box-shadow: 0 4px 20px rgba(124,58,237,0.35); }
+        .btn-accent  { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 20px rgba(245,158,11,0.3); }
+        .btn-info    { background: linear-gradient(135deg, #06b6d4, #0284c7); box-shadow: 0 4px 20px rgba(6,182,212,0.3); }
+        .btn-danger  { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--primary-light);
+            color: var(--primary-light);
+            margin-top: 12px;
+            box-shadow: none;
+        }
+        .btn-sm { padding: 8px 14px; font-size: 0.85rem; width: auto; display: inline-block; margin: 0; border-radius: 10px; }
+        .btn-chip { background: linear-gradient(135deg, #e65100, #bf360c); box-shadow: 0 4px 20px rgba(230,81,0,0.3); }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        th { background: #f8f9fa; color: #666; font-weight: 600; padding: 10px 4px; border-bottom: 2px solid var(--border); text-align: center; }
-        td { padding: 10px 4px; border-bottom: 1px solid var(--border); text-align: center; }
-        .val-plus { color: var(--positive); font-weight: bold; }
-        .val-minus { color: var(--negative); font-weight: bold; }
-        .sub-val { font-size: 0.75rem; color: #888; display: block; margin-top: 2px; }
-        
-        .hilow-container { display: flex; gap: 15px; margin-bottom: 15px; }
-        .hilow-box { flex: 1; background: #fafafa; padding: 15px 10px; border-radius: 12px; text-align: center; border: 1px solid #eee; }
-        .hilow-label { font-size: 0.8rem; color: #666; font-weight: bold; display: block; margin-bottom: 5px; }
-        .hilow-val { font-size: 1.3rem; font-weight: bold; }
-        .hilow-name { font-size: 0.85rem; color: #333; }
-        .hilow-best { color: var(--negative); } 
-        .hilow-worst { color: var(--positive); } 
+        .refresh-btn {
+            background: none; border: none; font-size: 1.4rem;
+            cursor: pointer; padding: 0 8px; color: var(--primary-light);
+            transition: transform 0.3s;
+        }
+        .refresh-btn:active { transform: rotate(180deg); }
 
-        .input-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px dashed #eee; }
-        .p-name { font-weight: bold; width: 50px; flex-shrink: 0; font-size: 1rem; }
-        .score-in { width: 35%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.2rem; text-align: right; -webkit-appearance: none; }
+        /* ── Home ── */
+        .home-title {
+            text-align: center; margin-bottom: 32px; padding-top: 20px;
+        }
+        .home-title .logo-main {
+            font-size: 2.6rem; font-weight: 900; letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #a78bfa, #06b6d4);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: block;
+        }
+        .home-title .logo-sub {
+            font-size: 0.9rem; font-weight: 600; color: var(--text-sub);
+            letter-spacing: 0.2em; text-transform: uppercase; display: block;
+            margin-top: 4px;
+        }
+
+        .home-menu { display: flex; flex-direction: column; gap: 12px; }
+        .home-menu-btn {
+            display: flex; align-items: center; gap: 16px;
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 18px 20px; cursor: pointer;
+            transition: all 0.2s; text-align: left; width: 100%; color: var(--text);
+        }
+        .home-menu-btn:active { transform: scale(0.98); opacity: 0.8; }
+        .home-menu-btn .btn-icon { font-size: 1.8rem; width: 44px; text-align: center; flex-shrink: 0; }
+        .home-menu-btn .btn-text-main { font-size: 1rem; font-weight: 700; display: block; }
+        .home-menu-btn .btn-text-sub { font-size: 0.8rem; color: var(--text-sub); display: block; margin-top: 2px; }
+        .home-menu-btn.color-purple { border-color: rgba(124,58,237,0.4); }
+        .home-menu-btn.color-amber  { border-color: rgba(245,158,11,0.4); }
+        .home-menu-btn.color-cyan   { border-color: rgba(6,182,212,0.4); }
+        .home-menu-btn.color-orange { border-color: rgba(230,81,0,0.4); }
+        .home-menu-btn.color-purple:hover { background: rgba(124,58,237,0.1); }
+        .home-menu-btn.color-amber:hover  { background: rgba(245,158,11,0.1); }
+        .home-menu-btn.color-cyan:hover   { background: rgba(6,182,212,0.1); }
+        .home-menu-btn.color-orange:hover { background: rgba(230,81,0,0.1); }
+
+        .cost-card {
+            text-align: center;
+            background: rgba(245,158,11,0.06);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 16px; padding: 16px; margin-top: 8px;
+        }
+        .cost-label { font-size: 0.72rem; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+        .cost-value { font-size: 1.8rem; font-weight: 900; color: var(--accent); }
+        .cost-sub { font-size: 0.75rem; color: var(--text-sub); margin-top: 4px; }
+
+        /* ── Season card on home ── */
+        .season-home-card {
+            background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.08));
+            border: 1px solid rgba(124,58,237,0.3);
+            border-radius: 20px; padding: 18px; margin-bottom: 16px;
+        }
+        .season-home-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .season-home-name { font-weight: 800; font-size: 1.05rem; color: var(--primary-light); }
+        .season-remain-badge {
+            font-size: 0.78rem; font-weight: 700;
+            background: rgba(124,58,237,0.2); color: var(--primary-light);
+            padding: 4px 10px; border-radius: 20px;
+            border: 1px solid rgba(124,58,237,0.3);
+        }
+
+        /* ── Tables ── */
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th {
+            background: rgba(255,255,255,0.04); color: var(--text-sub);
+            font-weight: 700; font-size: 0.75rem; letter-spacing: 0.05em;
+            padding: 10px 4px; border-bottom: 1px solid var(--border); text-align: center;
+        }
+        td { padding: 10px 4px; border-bottom: 1px solid var(--border); text-align: center; color: var(--text); }
+        tr:last-child td { border-bottom: none; }
+        .val-plus { color: var(--positive); font-weight: 700; }
+        .val-minus { color: var(--negative); font-weight: 700; }
+        .sub-val { font-size: 0.72rem; color: var(--text-sub); display: block; margin-top: 2px; }
+
+        /* ── BEST/WORST ── */
+        .hilow-container { display: flex; gap: 12px; margin-top: 16px; }
+        .hilow-box {
+            flex: 1; padding: 14px 10px; border-radius: 14px; text-align: center;
+            border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+        }
+        .hilow-label { font-size: 0.72rem; color: var(--text-sub); font-weight: 700; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
+        .hilow-val { font-size: 1.3rem; font-weight: 800; }
+        .hilow-name { font-size: 0.82rem; color: var(--text-sub); margin-top: 2px; }
+        .hilow-best { color: var(--negative); }
+        .hilow-worst { color: var(--positive); }
+
+        /* ── Input Form ── */
+        .input-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 0; border-bottom: 1px solid var(--border);
+        }
+        .input-row:last-of-type { border-bottom: none; }
+        .p-name { font-weight: 700; width: 48px; flex-shrink: 0; font-size: 0.95rem; color: var(--text); }
+        .score-in {
+            width: 36%; padding: 12px 10px; font-size: 1.2rem; font-weight: 700;
+            text-align: right; -webkit-appearance: none;
+            background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border);
+            border-radius: 10px; color: var(--text); outline: none;
+        }
+        .score-in:focus { border-color: var(--primary-light); background: rgba(124,58,237,0.1); }
         .opts { display: flex; flex-direction: column; gap: 5px; width: 30%; }
-        select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; width: 100%; box-sizing: border-box; background: #fff; }
-        
-        input[type="text"], input[type="number"] { padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 1rem; -webkit-appearance: none; }
-        .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        .rule-item label { display: block; font-size: 0.9rem; font-weight: bold; color: #666; margin-bottom: 6px; }
-        .rule-list { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #555; }
-        .rule-list li { margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
-        .rule-val { font-weight: bold; color: #333; }
+        select {
+            padding: 10px 8px; border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            font-size: 0.85rem; width: 100%;
+            background: rgba(255,255,255,0.06); color: var(--text); outline: none;
+        }
+        select:focus { border-color: var(--primary-light); }
 
-        .radar-grid { display: flex; flex-direction: column; gap: 30px; }
+        input[type="text"], input[type="number"] {
+            padding: 12px; border: 1px solid var(--glass-border); border-radius: 10px;
+            width: 100%; font-size: 0.95rem; -webkit-appearance: none;
+            background: rgba(255,255,255,0.06); color: var(--text); outline: none;
+        }
+        input[type="text"]:focus, input[type="number"]:focus { border-color: var(--primary-light); }
+        label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-sub); margin-bottom: 6px; letter-spacing: 0.03em; }
+
+        .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .rule-list { list-style: none; padding: 0; margin: 0; font-size: 0.88rem; }
+        .rule-list li {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--text-sub);
+        }
+        .rule-list li:last-child { border-bottom: none; }
+        .rule-val { font-weight: 700; color: var(--text); }
+
+        /* ── Radar ── */
+        .radar-grid { display: flex; flex-direction: column; gap: 24px; }
         .radar-item { text-align: center; }
-        .radar-title { font-weight: bold; color: #555; margin-bottom: 10px; font-size: 1.1rem; border-bottom: 2px solid var(--border); display:inline-block; padding: 0 10px 5px 10px;}
+        .radar-title {
+            font-weight: 800; font-size: 1rem; margin-bottom: 8px;
+            color: var(--text); display: inline-block;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-        details { margin-bottom: 15px; border: 1px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; }
-        summary { padding: 15px; font-weight: bold; cursor: pointer; background: #fafafa; list-style: none; display: flex; align-items: center; justify-content: space-between; color: var(--primary); }
+        /* ── Details/Summary ── */
+        details {
+            margin-bottom: 14px;
+            border: 1px solid var(--glass-border);
+            border-radius: 16px; overflow: hidden;
+            background: rgba(255,255,255,0.03);
+        }
+        summary {
+            padding: 14px 16px; font-weight: 700; cursor: pointer;
+            list-style: none; display: flex; align-items: center;
+            justify-content: space-between; color: var(--primary-light);
+            font-size: 0.9rem;
+        }
         summary::-webkit-details-marker { display: none; }
-        summary::after { content: "▼"; font-size: 0.8rem; transition: transform 0.2s; }
+        summary::after { content: "▼"; font-size: 0.75rem; transition: transform 0.2s; color: var(--text-sub); }
         details[open] summary::after { transform: rotate(180deg); }
-        .rule-content { padding: 15px; border-top: 1px solid var(--border); }
+        .rule-content { padding: 16px; border-top: 1px solid var(--border); }
 
+        /* ── Editing mode ── */
+        .editing-mode {
+            border: 2px solid var(--accent) !important;
+            background: rgba(245,158,11,0.06) !important;
+        }
+
+        /* ── Loader ── */
         .hidden { display: none !important; }
-        #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:flex; justify-content:center; align-items:center; z-index:999; font-weight:bold; color: var(--primary); flex-direction: column; gap: 10px;}
-        #loader::after { content: "⏳"; font-size: 2rem; animation: spin 2s infinite linear; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loader {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(15,15,26,0.96);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; flex-direction: column; gap: 12px;
+        }
+        .loader-ring {
+            width: 44px; height: 44px;
+            border: 3px solid rgba(167,139,250,0.2);
+            border-top-color: var(--primary-light);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loader-text { font-size: 0.9rem; color: var(--text-sub); font-weight: 600; letter-spacing: 0.05em; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .editing-mode { border: 3px solid var(--accent); background-color: #fff8e1; }
+        /* ── Chart ── */
         .chart-container { position: relative; height: 250px; width: 100%; margin: 0 auto; }
+
+        /* ── Season wins ── */
+        .wins-box {
+            flex: 1; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 14px 10px; text-align: center;
+            min-width: 0; word-break: keep-all; white-space: nowrap;
+        }
+        .wins-name { font-weight: 700; color: var(--primary-light); margin-bottom: 6px; font-size: 0.9rem; }
+        .wins-count { font-size: 1.8rem; font-weight: 900; white-space: nowrap; }
+        .wins-count.has-wins { color: var(--accent); }
+        .wins-count.no-wins { color: var(--text-sub); }
+
+        /* ── Scrollable table wrapper ── */
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>
 
-    <div id="loader">読み込み中...</div>
+    <div id="loader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">読み込み中...</div>
+    </div>
 
     <div id="viewHome" class="container hidden">
-        <h1 class="home-title">N.LEAGUE<br><span style="font-size:1.3rem; font-weight:600; opacity:0.85;">ScoreManager</span></h1>
+        <div class="home-title">
+            <span class="logo-main">N.LEAGUE</span>
+            <span class="logo-sub">Score Manager</span>
+        </div>
 
-        <div id="homeCurrentSeasonCard" class="card hidden" style="border-left: 5px solid var(--primary); padding: 15px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                <div style="font-weight:bold; color:var(--primary); font-size:1.1rem; display:flex; align-items:center; gap:5px;">
-                    🏆 <span id="homeSeasonName">シーズン名</span>
-                </div>
-                <div style="font-size:0.85rem; color:#666; font-weight:bold; background:#f0f2f5; padding:4px 8px; border-radius:8px;" id="homeRemainGames">残り - 戦</div>
+        <div id="homeCurrentSeasonCard" class="season-home-card hidden">
+            <div class="season-home-header">
+                <div class="season-home-name">🏆 <span id="homeSeasonName">シーズン名</span></div>
+                <div class="season-remain-badge" id="homeRemainGames">残り - 戦</div>
             </div>
-            <table style="margin-top:5px;">
-                <thead><tr><th width="15%">順</th><th>名前</th><th>Total</th><th width="20%">pt差</th></tr></thead>
+            <table>
+                <thead><tr><th width="12%">順</th><th>名前</th><th>Total</th><th width="22%">pt差</th></tr></thead>
                 <tbody id="homeSeasonStatsBody"></tbody>
             </table>
         </div>
 
-        <div class="home-menu" style="min-height: auto; padding: 10px 0;">
-            <button class="btn btn-primary" onclick="navToSeason()">
-                📝 入力・確認<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">現在のシーズン</span>
+        <div class="home-menu">
+            <button class="home-menu-btn color-purple" onclick="navToSeason()">
+                <span class="btn-icon">📝</span>
+                <span><span class="btn-text-main">入力・確認</span><span class="btn-text-sub">現在のシーズン</span></span>
             </button>
-            <button class="btn btn-accent" onclick="navToArchive()">
-                📚 過去データ<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">終了したシーズン</span>
+            <button class="home-menu-btn color-amber" onclick="navToArchive()">
+                <span class="btn-icon">📚</span>
+                <span><span class="btn-text-main">過去データ</span><span class="btn-text-sub">終了したシーズン</span></span>
             </button>
-            <button class="btn btn-info" onclick="navToAnalysis()">
-                📊 通算分析<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">全期間の合算・グラフ</span>
+            <button class="home-menu-btn color-cyan" onclick="navToAnalysis()">
+                <span class="btn-icon">📊</span>
+                <span><span class="btn-text-main">通算分析</span><span class="btn-text-sub">全期間の合算・グラフ</span></span>
             </button>
-            <button class="btn btn-outline" style="background:#fff; border-color:#e65100; color:#e65100;" onclick="navToChips()">
-                💰 チップ貯金<br><span style="font-size:0.85rem; opacity:0.9; font-weight:normal">現在の貯金額・増減入力</span>
+            <button class="home-menu-btn color-orange" onclick="navToChips()">
+                <span class="btn-icon">💰</span>
+                <span><span class="btn-text-main">チップ貯金</span><span class="btn-text-sub">現在の貯金額・増減入力</span></span>
             </button>
         </div>
 
-        <div class="card" style="text-align: center; border: 1px dashed var(--accent); background-color: #fffdf5; box-shadow: none; padding: 15px; margin-top: 20px;">
-            <div style="font-size: 0.8rem; font-weight: bold; color: #666; margin-bottom: 5px;">場代</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 2px;">
-                ¥<span id="homeVirtualCost">0</span>
-            </div>
-            <div style="font-size: 0.75rem; color: #888;">
-                通算 <span id="homeTotalGames">0</span> 試合 × 1,200円
-            </div>
+        <div class="cost-card" style="margin-top:16px;">
+            <div class="cost-label">通算場代</div>
+            <div class="cost-value">¥<span id="homeVirtualCost">0</span></div>
+            <div class="cost-sub">通算 <span id="homeTotalGames">0</span> 試合 × 1,200円</div>
         </div>
     </div>
 
     <div id="viewChips" class="container hidden">
         <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
         <h2>💰 チップ貯金</h2>
-        
+
         <div class="card">
             <h3>現在の貯金額 (1枚200円)</h3>
             <table>
@@ -169,128 +394,153 @@
         </div>
 
         <div class="card">
-            <h3>➕ 対局終了後の増減入力</h3>
-            <p style="font-size:0.8rem; color:#666;">※獲得した枚数を入力してください。<br>（マイナスの場合は数字の前に - をつけます）</p>
+            <h3>増減入力</h3>
+            <p style="font-size:0.8rem; color:var(--text-sub); margin:0 0 12px 0;">獲得枚数を入力（マイナスは - をつける）</p>
             <div id="chipsInputForm">
-                <div class="input-row"><div class="p-name">松下</div><input type="number" id="chip_in_0" class="score-in" placeholder="枚数" style="width:50%;"></div>
-                <div class="input-row"><div class="p-name">野田</div><input type="number" id="chip_in_1" class="score-in" placeholder="枚数" style="width:50%;"></div>
-                <div class="input-row"><div class="p-name">青木</div><input type="number" id="chip_in_2" class="score-in" placeholder="枚数" style="width:50%;"></div>
+                <div class="input-row"><div class="p-name">松下</div><input type="number" id="chip_in_0" class="score-in" placeholder="枚数" style="width:55%;"></div>
+                <div class="input-row"><div class="p-name">野田</div><input type="number" id="chip_in_1" class="score-in" placeholder="枚数" style="width:55%;"></div>
+                <div class="input-row"><div class="p-name">青木</div><input type="number" id="chip_in_2" class="score-in" placeholder="枚数" style="width:55%;"></div>
             </div>
-            <button class="btn btn-primary" style="background:#e65100;" onclick="submitChips()">枚数の増減を保存</button>
+            <button class="btn btn-chip" onclick="submitChips()">枚数の増減を保存</button>
         </div>
 
         <div class="card">
-            <h3>📜 履歴</h3>
-            <table class="hist-table">
-                <thead><tr><th width="30%">日時</th><th>松下</th><th>野田</th><th>青木</th><th width="15%">操作</th></tr></thead>
-                <tbody id="chipsHistoryBody"></tbody>
-            </table>
+            <h3>履歴</h3>
+            <div class="table-scroll">
+                <table class="hist-table">
+                    <thead><tr><th width="28%">日時</th><th>松下</th><th>野田</th><th>青木</th><th width="14%">操作</th></tr></thead>
+                    <tbody id="chipsHistoryBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div id="viewSeason" class="container hidden">
         <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
         <div id="setupArea" class="card hidden">
-            <h2>🏆 新規シーズン作成</h2>
-            <div style="margin-bottom:20px;"><label style="font-weight:bold;">シーズン名</label><input type="text" id="setupName" placeholder="例: 2026 春リーグ"></div>
+            <h2>新規シーズン作成</h2>
+            <div style="margin-bottom:16px;"><label>シーズン名</label><input type="text" id="setupName" placeholder="例: 2026 春リーグ"></div>
             <h3>基本設定</h3>
-            <div class="rule-grid"><div class="rule-item"><label>試合数</label><input type="number" id="setupGames" value="10"></div><div class="rule-item"><label>原点 (配給/返し)</label><input type="number" id="setupOrigin" value="35000"></div></div>
-            <div style="margin-bottom:10px;"><label style="font-weight:bold; font-size:0.9rem;">ウマ (1位/2位/3位)</label><div style="display:flex; gap:10px; margin-top:5px;"><input type="number" id="uma1" value="15"><input type="number" id="uma2" value="-5"><input type="number" id="uma3" value="-10"></div></div>
+            <div class="rule-grid">
+                <div><label>試合数</label><input type="number" id="setupGames" value="10"></div>
+                <div><label>原点 (配給/返し)</label><input type="number" id="setupOrigin" value="35000"></div>
+            </div>
+            <div style="margin-bottom:14px;"><label>ウマ (1位 / 2位 / 3位)</label><div style="display:flex; gap:10px; margin-top:6px;"><input type="number" id="uma1" value="15"><input type="number" id="uma2" value="-5"><input type="number" id="uma3" value="-10"></div></div>
             <h3>ルール詳細</h3>
-            <div class="rule-grid"><div class="rule-item"><label>🔴 赤ドラ</label><select id="ruleRed"><option value="1枚">1枚</option><option value="2枚">2枚</option></select></div><div class="rule-item"><label>🌸 花牌</label><select id="ruleFlower"><option value="あり">あり</option><option value="なし">なし</option></select></div><div class="rule-item"><label>🀄 北抜き</label><select id="ruleNorth"><option value="あり">あり</option><option value="なし">なし</option></select></div></div>
-            <div class="rule-item" style="margin-bottom:10px;"><label>📝 その他</label><input type="text" id="ruleOther"></div>
+            <div class="rule-grid">
+                <div><label>赤ドラ</label><select id="ruleRed"><option value="1枚">1枚</option><option value="2枚">2枚</option></select></div>
+                <div><label>花牌</label><select id="ruleFlower"><option value="あり">あり</option><option value="なし">なし</option></select></div>
+                <div><label>北抜き</label><select id="ruleNorth"><option value="あり">あり</option><option value="なし">なし</option></select></div>
+            </div>
+            <div style="margin-bottom:14px;"><label>その他</label><input type="text" id="ruleOther"></div>
             <button class="btn btn-primary" onclick="startSeason()">シーズン開始</button>
         </div>
 
         <div id="activeSeasonArea" class="hidden">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h2 id="seasonTitle" style="margin:0; border:none; padding:0; font-size:1.4rem;">シーズン名</h2><button class="refresh-btn" onclick="refreshData()" title="更新">🔄</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <div id="seasonTitle" style="font-size:1.3rem; font-weight:900; background:linear-gradient(135deg,var(--primary-light),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;"></div>
+                <button class="refresh-btn" onclick="refreshData()" title="更新">🔄</button>
+            </div>
             <details id="ruleDetails">
                 <summary>⚙️ ルール設定を確認・編集</summary>
                 <div class="rule-content">
                     <ul id="currentRuleList" class="rule-list"></ul>
-                    <div id="editConfigArea" style="margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
-                        <h3 style="margin:0 0 12px 0;">✏️ 設定を変更する</h3>
+                    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+                        <h3 style="margin:0 0 12px 0;">設定を変更する</h3>
                         <div class="rule-grid">
-                            <div class="rule-item"><label>試合数</label><input type="number" id="editTotalGames"></div>
-                            <div class="rule-item"><label>原点 (配給/返し)</label><input type="number" id="editOrigin"></div>
+                            <div><label>試合数</label><input type="number" id="editTotalGames"></div>
+                            <div><label>原点 (配給/返し)</label><input type="number" id="editOrigin"></div>
                         </div>
-                        <div style="margin-bottom:12px;"><label style="font-weight:bold; font-size:0.9rem;">ウマ (1位/2位/3位)</label><div style="display:flex; gap:10px; margin-top:5px;"><input type="number" id="editUma1"><input type="number" id="editUma2"><input type="number" id="editUma3"></div></div>
+                        <div style="margin-bottom:12px;"><label>ウマ (1位 / 2位 / 3位)</label><div style="display:flex; gap:10px; margin-top:6px;"><input type="number" id="editUma1"><input type="number" id="editUma2"><input type="number" id="editUma3"></div></div>
                         <div class="rule-grid">
-                            <div class="rule-item"><label>🔴 赤ドラ</label><select id="editRuleRed"><option value="1枚">1枚</option><option value="2枚">2枚</option></select></div>
-                            <div class="rule-item"><label>🌸 花牌</label><select id="editRuleFlower"><option value="あり">あり</option><option value="なし">なし</option></select></div>
-                            <div class="rule-item"><label>🀄 北抜き</label><select id="editRuleNorth"><option value="あり">あり</option><option value="なし">なし</option></select></div>
+                            <div><label>赤ドラ</label><select id="editRuleRed"><option value="1枚">1枚</option><option value="2枚">2枚</option></select></div>
+                            <div><label>花牌</label><select id="editRuleFlower"><option value="あり">あり</option><option value="なし">なし</option></select></div>
+                            <div><label>北抜き</label><select id="editRuleNorth"><option value="あり">あり</option><option value="なし">なし</option></select></div>
                         </div>
-                        <div class="rule-item" style="margin-bottom:12px;"><label>📝 その他</label><input type="text" id="editRuleOther"></div>
-                        <button class="btn btn-accent btn-sm" style="display:block; width:100%; padding:12px;" onclick="saveSeasonConfig()">設定を保存</button>
+                        <div style="margin-bottom:12px;"><label>その他</label><input type="text" id="editRuleOther"></div>
+                        <button class="btn btn-accent" onclick="saveSeasonConfig()">設定を保存</button>
                     </div>
                 </div>
             </details>
+
             <div class="card" id="inputCard">
-                <h2 id="inputHeader">🀄 結果入力 <span id="nextGameNum" style="font-size:1rem; color:#666; font-weight:normal"></span></h2>
+                <h2 id="inputHeader">結果入力 <span id="nextGameNum" style="font-size:0.85rem; color:var(--text-sub); font-weight:600;"></span></h2>
                 <div id="inputForm">
                     <div class="input-row"><div class="p-name">松下</div><input type="number" id="score_0" class="score-in" placeholder="点数"><div class="opts"><select id="bust_0"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
                     <div class="input-row"><div class="p-name">野田</div><input type="number" id="score_1" class="score-in" placeholder="点数"><div class="opts"><select id="bust_1"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
                     <div class="input-row"><div class="p-name">青木</div><input type="number" id="score_2" class="score-in" placeholder="点数"><div class="opts"><select id="bust_2"><option value="0">飛び:無</option><option value="1">1人飛び</option><option value="2">2人飛び</option></select></div></div>
                 </div>
-                <div id="errorMsg" style="color:red; text-align:center; display:none; margin:10px 0; font-weight:bold;"></div>
+                <div id="errorMsg" style="color:var(--negative); text-align:center; display:none; margin:10px 0; font-weight:700; font-size:0.9rem;"></div>
                 <div id="btnGroupSubmit"><button class="btn btn-primary" id="submitBtn" onclick="submitGame()">結果を保存</button></div>
-                <div id="btnGroupEdit" class="hidden" style="display:flex; gap:10px;"><button class="btn btn-accent" onclick="updateGame()">修正を実行</button><button class="btn btn-outline" style="margin-top:0;" onclick="cancelEdit()">キャンセル</button></div>
+                <div id="btnGroupEdit" class="hidden" style="display:flex; gap:10px;">
+                    <button class="btn btn-accent" style="flex:2;" onclick="updateGame()">修正を実行</button>
+                    <button class="btn btn-outline" style="flex:1; margin-top:0;" onclick="cancelEdit()">キャンセル</button>
+                </div>
             </div>
+
             <div class="card">
-                <h2>📊 トータル成績</h2>
+                <h2>トータル成績</h2>
                 <table><thead><tr><th>名前</th><th>Total</th><th>pt差</th><th>ラス回避</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="leaderboardBody"></tbody></table>
-                <div id="hilowArea" style="margin-top:20px;"></div>
+                <div id="hilowArea"></div>
             </div>
-            <div class="card"><h2>📈 推移グラフ</h2><div class="chart-container"><canvas id="scoreChart"></canvas></div></div>
+
+            <div class="card"><h2>推移グラフ</h2><div class="chart-container"><canvas id="scoreChart"></canvas></div></div>
+
             <div class="card">
-                <h2>📜 履歴</h2>
-                <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th><th width="15%">操作</th></tr></thead><tbody id="historyBody"></tbody></table>
-                <button class="btn btn-danger" style="margin-top:25px;" onclick="finishSeason()">⚠ シーズン終了・アーカイブへ</button>
+                <h2>履歴</h2>
+                <div class="table-scroll">
+                    <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th><th width="14%">操作</th></tr></thead><tbody id="historyBody"></tbody></table>
+                </div>
+                <button class="btn btn-danger" style="margin-top:20px;" onclick="finishSeason()">⚠ シーズン終了・アーカイブへ</button>
             </div>
         </div>
     </div>
 
     <div id="viewArchive" class="container hidden">
         <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
-        <h2>📚 終了したシーズン</h2>
+        <h2>過去データ</h2>
         <div id="archiveContainer"></div>
     </div>
 
     <div id="viewArchiveDetail" class="container hidden">
         <div class="fixed-nav"><span class="nav-arrow" onclick="navToArchive()">←</span></div>
         <h2 id="archiveDetailTitle">詳細</h2>
-        <div class="card"><h3>⚙️ ルール設定</h3><ul id="archiveRuleList" class="rule-list"></ul></div>
+        <div class="card"><h3>ルール設定</h3><ul id="archiveRuleList" class="rule-list"></ul></div>
         <div class="card">
-            <h3>📊 最終成績</h3>
+            <h3>最終成績</h3>
             <table><thead><tr><th>名前</th><th>Total</th><th>連対率</th><th>ラス回避</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailStats"></tbody></table>
-            <div id="archiveHilowArea" style="margin-top:20px;"></div>
+            <div id="archiveHilowArea"></div>
         </div>
-        <div class="card"><h3>📈 推移グラフ</h3><div class="chart-container"><canvas id="archiveScoreChart"></canvas></div></div>
+        <div class="card"><h3>推移グラフ</h3><div class="chart-container"><canvas id="archiveScoreChart"></canvas></div></div>
         <div class="card">
-            <h3>📜 履歴</h3>
-            <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailGames"></tbody></table>
+            <h3>履歴</h3>
+            <div class="table-scroll">
+                <table class="hist-table"><thead><tr><th width="10%">No</th><th>1着</th><th>2着</th><th>3着</th></tr></thead><tbody id="archiveDetailGames"></tbody></table>
+            </div>
         </div>
     </div>
 
     <div id="viewAnalysis" class="container hidden">
         <div class="fixed-nav"><span class="nav-arrow" onclick="navToHome()">←</span></div>
-        <h2>📊 通算データ分析</h2>
+        <h2>通算データ分析</h2>
         <div class="card">
-            <h3>🕸 レーダーチャート</h3>
+            <h3>レーダーチャート</h3>
             <div class="radar-grid">
-                <div class="radar-item"><div class="radar-title">松下</div><div class="chart-container" style="height:250px;"><canvas id="radarChart0"></canvas></div></div>
-                <div class="radar-item"><div class="radar-title">野田</div><div class="chart-container" style="height:250px;"><canvas id="radarChart1"></canvas></div></div>
-                <div class="radar-item"><div class="radar-title">青木</div><div class="chart-container" style="height:250px;"><canvas id="radarChart2"></canvas></div></div>
+                <div class="radar-item"><div class="radar-title">松下</div><div class="chart-container"><canvas id="radarChart0"></canvas></div></div>
+                <div class="radar-item"><div class="radar-title">野田</div><div class="chart-container"><canvas id="radarChart1"></canvas></div></div>
+                <div class="radar-item"><div class="radar-title">青木</div><div class="chart-container"><canvas id="radarChart2"></canvas></div></div>
             </div>
-            <p style="font-size:0.8rem; color:#666; margin-top:20px; text-align:center;">攻撃力(平均Pt) / 防御力(ラス回避) / トップ率<br>爆発力(最高Pt) / 安定感(平均順位)</p>
+            <p style="font-size:0.78rem; color:var(--text-sub); margin-top:16px; text-align:center; line-height:1.6;">攻撃力(平均Pt) / 防御力(ラス回避) / トップ率<br>爆発力(最高Pt) / 安定感(平均順位)</p>
         </div>
         <div class="card">
-            <h3>🏆 シーズン優勝回数</h3>
-            <div id="seasonWinsArea" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:5px;"></div>
+            <h3>シーズン優勝回数</h3>
+            <div id="seasonWinsArea" style="display:flex; gap:10px;"></div>
         </div>
         <div class="card">
-            <h3>🔢 通算成績 (全<span id="totalGamesCount">0</span>戦)</h3>
-            <table><thead><tr><th>名前</th><th>Total</th><th>平均Pt</th><th>平均着順</th><th>1位</th><th>2位</th><th>3位</th><th>1位率</th><th>2位率</th><th>3位率</th></tr></thead><tbody id="analysisTableBody"></tbody></table>
+            <h3>通算成績 (全<span id="totalGamesCount">0</span>戦)</h3>
+            <div class="table-scroll">
+                <table><thead><tr><th>名前</th><th>Total</th><th>平均Pt</th><th>平均着順</th><th>1位</th><th>2位</th><th>3位</th><th>1位率</th><th>2位率</th><th>3位率</th></tr></thead><tbody id="analysisTableBody"></tbody></table>
+            </div>
         </div>
     </div>
 
@@ -331,8 +581,8 @@
         const COLORS = ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'];
         const COLORS_ALPHA = ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)'];
         
-        Chart.defaults.color = '#666';
-        Chart.defaults.borderColor = '#e0e0e0';
+        Chart.defaults.color = '#9090b0';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
 
         let appData = { current: { active: false, config: {}, games: [] }, archives: [], chips: { totals: [0, 0, 0], history: [] } };
         let editingGameId = null; 
@@ -751,11 +1001,11 @@
                 PLAYERS.forEach((p, i) => {
                     const w = stats[i].seasonWins;
                     const box = document.createElement('div');
-                    box.style.cssText = 'flex:1; background:#fafafa; border:1px solid #eee; border-radius:12px; padding:12px; text-align:center;';
-                    box.innerHTML = `<div style="font-weight:bold; color:var(--primary); margin-bottom:4px;">${p}</div><div style="font-size:1.6rem; font-weight:800; color:${w>0?'#e65100':'#aaa'};">${w}<span style="font-size:1rem; font-weight:normal;">回</span></div>`;
+                    box.className = 'wins-box';
+                    box.innerHTML = `<div class="wins-name">${p}</div><div class="wins-count ${w>0?'has-wins':'no-wins'}">${w}<span style="font-size:1rem; font-weight:600;">回</span></div>`;
                     winsArea.appendChild(box);
                 });
-                winsArea.insertAdjacentHTML('beforeend', `<div style="width:100%; text-align:center; font-size:0.8rem; color:#999; margin-top:4px;">全${totalSeasons}シーズン</div>`);
+                winsArea.insertAdjacentHTML('beforeend', `<div style="width:100%; text-align:center; font-size:0.78rem; color:var(--text-sub); margin-top:8px;">全${totalSeasons}シーズン</div>`);
             }
             const tbody = document.getElementById('analysisTableBody'); tbody.innerHTML = '';
             stats.forEach(s => {
