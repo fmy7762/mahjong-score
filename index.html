@@ -317,13 +317,14 @@
 
         /* ── Season wins ── */
         .wins-box {
-            flex: 1; background: rgba(255,255,255,0.04);
+            flex: 1 1 0; background: rgba(255,255,255,0.04);
             border: 1px solid var(--glass-border);
-            border-radius: 14px; padding: 14px 10px; text-align: center;
-            min-width: 0; word-break: keep-all; white-space: nowrap;
+            border-radius: 14px; padding: 14px 6px; text-align: center;
+            overflow: hidden;
         }
-        .wins-name { font-weight: 700; color: var(--primary-light); margin-bottom: 6px; font-size: 0.9rem; }
-        .wins-count { font-size: 1.8rem; font-weight: 900; white-space: nowrap; }
+        .wins-name { font-weight: 700; color: var(--primary-light); margin-bottom: 6px; font-size: 0.88rem; }
+        .wins-count { font-size: 1.6rem; font-weight: 900; line-height: 1.2; }
+        .wins-count .wins-unit { font-size: 0.85rem; font-weight: 600; }
         .wins-count.has-wins { color: var(--accent); }
         .wins-count.no-wins { color: var(--text-sub); }
 
@@ -1002,7 +1003,7 @@
                     const w = stats[i].seasonWins;
                     const box = document.createElement('div');
                     box.className = 'wins-box';
-                    box.innerHTML = `<div class="wins-name">${p}</div><div class="wins-count ${w>0?'has-wins':'no-wins'}">${w}<span style="font-size:1rem; font-weight:600;">回</span></div>`;
+                    box.innerHTML = `<div class="wins-name">${p}</div><div class="wins-count ${w>0?'has-wins':'no-wins'}">${w}<span class="wins-unit">回</span></div>`;
                     winsArea.appendChild(box);
                 });
                 winsArea.insertAdjacentHTML('beforeend', `<div style="width:100%; text-align:center; font-size:0.78rem; color:var(--text-sub); margin-top:8px;">全${totalSeasons}シーズン</div>`);
