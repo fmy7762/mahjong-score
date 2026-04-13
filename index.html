@@ -316,15 +316,10 @@
         .chart-container { position: relative; height: 250px; width: 100%; margin: 0 auto; }
 
         /* ── Season wins ── */
-        .wins-box {
-            flex: 1 1 0; background: rgba(255,255,255,0.04);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px; padding: 14px 6px; text-align: center;
-            overflow: hidden;
-        }
-        .wins-name { font-weight: 700; color: var(--primary-light); margin-bottom: 6px; font-size: 0.88rem; }
-        .wins-count { font-size: 1.6rem; font-weight: 900; line-height: 1.2; }
-        .wins-count .wins-unit { font-size: 0.85rem; font-weight: 600; }
+        .wins-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .wins-row:last-of-type { border-bottom: none; }
+        .wins-name { font-weight: 700; color: var(--primary-light); font-size: 0.95rem; }
+        .wins-count { font-size: 1.3rem; font-weight: 900; }
         .wins-count.has-wins { color: var(--accent); }
         .wins-count.no-wins { color: var(--text-sub); }
 
@@ -535,7 +530,7 @@
         </div>
         <div class="card">
             <h3>シーズン優勝回数</h3>
-            <div id="seasonWinsArea" style="display:flex; gap:10px;"></div>
+            <div id="seasonWinsArea"></div>
         </div>
         <div class="card">
             <h3>通算成績 (全<span id="totalGamesCount">0</span>戦)</h3>
@@ -1001,12 +996,12 @@
             } else {
                 PLAYERS.forEach((p, i) => {
                     const w = stats[i].seasonWins;
-                    const box = document.createElement('div');
-                    box.className = 'wins-box';
-                    box.innerHTML = `<div class="wins-name">${p}</div><div class="wins-count ${w>0?'has-wins':'no-wins'}">${w}<span class="wins-unit">回</span></div>`;
-                    winsArea.appendChild(box);
+                    const row = document.createElement('div');
+                    row.className = 'wins-row';
+                    row.innerHTML = `<span class="wins-name">${p}</span><span class="wins-count ${w>0?'has-wins':'no-wins'}">${w}回</span>`;
+                    winsArea.appendChild(row);
                 });
-                winsArea.insertAdjacentHTML('beforeend', `<div style="width:100%; text-align:center; font-size:0.78rem; color:var(--text-sub); margin-top:8px;">全${totalSeasons}シーズン</div>`);
+                winsArea.insertAdjacentHTML('beforeend', `<div style="text-align:right; font-size:0.78rem; color:var(--text-sub); margin-top:8px;">全${totalSeasons}シーズン</div>`);
             }
             const tbody = document.getElementById('analysisTableBody'); tbody.innerHTML = '';
             stats.forEach(s => {
