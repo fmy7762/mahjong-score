@@ -325,6 +325,33 @@
 
         /* ── Scrollable table wrapper ── */
         .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* ── Analysis player card ── */
+        .analysis-player {
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .analysis-player:last-child { border-bottom: none; }
+        .analysis-player-name {
+            font-size: 1rem; font-weight: 800;
+            color: var(--primary-light); margin-bottom: 10px;
+        }
+        .analysis-row {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 6px; margin-bottom: 6px;
+        }
+        .analysis-cell {
+            background: rgba(255,255,255,0.04);
+            border-radius: 8px; padding: 8px 4px; text-align: center;
+        }
+        .analysis-cell-label {
+            font-size: 0.68rem; color: var(--text-sub);
+            font-weight: 700; letter-spacing: 0.03em;
+            display: block; margin-bottom: 3px;
+        }
+        .analysis-cell-val {
+            font-size: 0.95rem; font-weight: 800; color: var(--text);
+        }
     </style>
 </head>
 <body>
@@ -534,9 +561,7 @@
         </div>
         <div class="card">
             <h3>通算成績 (全<span id="totalGamesCount">0</span>戦)</h3>
-            <div class="table-scroll">
-                <table><thead><tr><th>名前</th><th>Total</th><th>平均Pt</th><th>平均着順</th><th>1位</th><th>2位</th><th>3位</th><th>1位率</th><th>2位率</th><th>3位率</th></tr></thead><tbody id="analysisTableBody"></tbody></table>
-            </div>
+            <div id="analysisTableBody"></div>
         </div>
     </div>
 
@@ -1011,9 +1036,24 @@
                 s.secondRate = (s.ranks[1] / s.gameCount * 100).toFixed(1);
                 s.lastRate = (s.ranks[2] / s.gameCount * 100).toFixed(1);
                 s.avgRank = ((s.ranks[0]*1 + s.ranks[1]*2 + s.ranks[2]*3) / s.gameCount).toFixed(2);
-                const tr = document.createElement('tr'); const ptClass = s.totalPt >= 0 ? 'val-plus' : 'val-minus';
-                tr.innerHTML = `<td style="color:var(--primary); font-weight:bold;">${s.name}</td><td class="${ptClass}">${s.totalPt.toFixed(1)}</td><td>${s.avgPt}</td><td>${s.avgRank}</td><td>${s.ranks[0]}</td><td>${s.ranks[1]}</td><td>${s.ranks[2]}</td><td>${s.topRate}%</td><td>${s.secondRate}%</td><td>${s.lastRate}%</td>`;
-                tbody.appendChild(tr);
+                const ptClass = s.totalPt >= 0 ? 'val-plus' : 'val-minus';
+                const block = document.createElement('div');
+                block.className = 'analysis-player';
+                block.innerHTML = `
+                    <div class="analysis-player-name">${s.name}</div>
+                    <div class="analysis-row">
+                        <div class="analysis-cell"><span class="analysis-cell-label">Total</span><span class="analysis-cell-val ${ptClass}">${s.totalPt >= 0 ? '+' : ''}${s.totalPt.toFixed(1)}</span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">平均Pt</span><span class="analysis-cell-val">${s.avgPt}</span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">平均着順</span><span class="analysis-cell-val">${s.avgRank}</span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">試合数</span><span class="analysis-cell-val">${s.gameCount}</span></div>
+                    </div>
+                    <div class="analysis-row">
+                        <div class="analysis-cell"><span class="analysis-cell-label">1位 / 1位率</span><span class="analysis-cell-val">${s.ranks[0]} <span style="font-size:0.75rem;color:var(--text-sub);">${s.topRate}%</span></span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">2位 / 2位率</span><span class="analysis-cell-val">${s.ranks[1]} <span style="font-size:0.75rem;color:var(--text-sub);">${s.secondRate}%</span></span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">3位 / 3位率</span><span class="analysis-cell-val">${s.ranks[2]} <span style="font-size:0.75rem;color:var(--text-sub);">${s.lastRate}%</span></span></div>
+                        <div class="analysis-cell"><span class="analysis-cell-label">ラス回避</span><span class="analysis-cell-val">${(100 - parseFloat(s.lastRate)).toFixed(1)}%</span></div>
+                    </div>`;
+                tbody.appendChild(block);
             });
             const datasets = stats.map((s, i) => {
                 const lastAvoid = s.gameCount > 0 ? (100 - s.ranks[2] / s.gameCount * 100) : 0;
